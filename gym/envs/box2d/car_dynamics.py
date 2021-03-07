@@ -67,6 +67,8 @@ class Car:
         self.hull.color = (0.8, 0.0, 0.0)
         self.wheels = []
         self.fuel_spent = 0.0
+        self.curren_tile = None
+        self.future_tile = None
         mu, sigma = 1, 0.2 # mean and standard deviation
         self.gaussianFriction = np.random.normal(mu, sigma, 1000)
         WHEEL_POLY = [
@@ -194,7 +196,6 @@ class Car:
             f_force *= 205000*SIZE*SIZE
             p_force *= 205000*SIZE*SIZE
             force = np.sqrt(np.square(f_force) + np.square(p_force))
-
             # Skid trace
             if abs(force) > 2.0*friction_limit:
                 if w.skid_particle and w.skid_particle.grass == grass and len(w.skid_particle.poly) < 30:

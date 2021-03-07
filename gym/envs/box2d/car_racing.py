@@ -57,10 +57,10 @@ WINDOW_W = 1000
 WINDOW_H = 800
 
 SCALE = 6.0  # Track scale
-TRACK_RAD = 900 / SCALE  # Track is heavily morphed circle with this radius
+TRACK_RAD = 300 / SCALE  # Track is heavily morphed circle with this radius
 PLAYFIELD = 2000 / SCALE  # Game over boundary
 FPS = 50  # Frames per second
-ZOOM = 2.7  # Camera zoom
+ZOOM = 1    #2.7  # Camera zoom
 ZOOM_FOLLOW = False  # Set to False for fixed view (don't use zoom)
 
 
@@ -105,6 +105,9 @@ class FrictionDetector(contactListener):
             return
         if begin:
             obj.tiles.add(tile)
+            self.env.car.curren_tile = tile.road_id
+            self.env.car.future_tile = tile.road_id + 5
+            #self.env.car.future_tile = 
             if not tile.road_visited:
                 tile.road_visited = True
                 self.env.reward += 1000.0 / len(self.env.track)
@@ -310,6 +313,8 @@ class CarRacing(gym.Env, EzPickle):
             vertices = [road1_l, road1_r, road2_r, road2_l]
             self.fd_tile.shape.vertices = vertices
             t = self.world.CreateStaticBody(fixtures=self.fd_tile)
+            t.road_id = i
+            t.center_p = (x1, y1)
             t.userData = t
             c = 0.01 * (i % 3)
             t.color = [ROAD_COLOR[0] + c, ROAD_COLOR[1] + c, ROAD_COLOR[2] + c]
@@ -430,8 +435,22 @@ class CarRacing(gym.Env, EzPickle):
             - (scroll_x * zoom * math.sin(angle) + scroll_y * zoom * math.cos(angle)),
         )
         self.transform.set_rotation(angle)
-
+        
         self.car.draw(self.viewer, mode != "state_pixels")
+        #debug line
+        class Particle:
+            pass
+        p = Particle()
+        p1 = self.road[self.car.curren_tile].center_p
+        if self.car.future_tile < self.road[-1].road_id:
+            p2 = self.road[self.car.future_tile].center_p
+        else:
+            p1 = self.road[-4].center_p
+            p2 = self.road[-1].center_p
+
+        p.poly = [(p1[0], p1[1]), (p2[0], p2[1]) ]
+        p.color = (0.0,  0.0, 0.0)
+        self.viewer.draw_polyline(p.poly, color=p.color, linewidth=5)
 
         arr = None
         win = self.viewer.window
