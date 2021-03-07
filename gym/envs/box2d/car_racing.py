@@ -503,16 +503,14 @@ class CarRacing(gym.Env, EzPickle):
         p2 = np.array(p2)
         p3 = np.array(p3)
         side = ((p3[0]-p2[0])*(p2[1]-p1[1]) - (p2[0]-p1[0])*(p3[1]-p2[1]))
-        side /= abs(side)
+        side /= -abs(side)
         offset = np.linalg.norm(np.cross(p2-p1, p1-p3))/np.linalg.norm(p2-p1)*side
         return offset/TRACK_WIDTH
         #return ()/(TRACK_WIDTH)
     def calcAngle(self, p1, p2, p3, p4):
         v1 = -np.array(p1) + np.array(p2)
         v2 = -np.array(p3) + np.array(p4)
-        signed_angle = math.atan2(v2[1],v2[0]) - math.atan2(v1[1],v1[0])
-        if abs(signed_angle) > np.pi:
-            signed_angle += 2*np.pi
+        signed_angle = math.atan2( v1[0]*v2[1]- v1[1]*v2[0], v1[0]*v2[0] + v1[1]*v2[1] )
         return np.rad2deg(signed_angle)/MAX_ANGLE
 
     def close(self):
@@ -648,7 +646,7 @@ if __name__ == "__main__":
         if k == key.RIGHT:
             a[0] = +1.0
         if k == key.UP:
-            a[1] = +1.0
+            a[1] = +0.3
         if k == key.DOWN:
             a[2] = +0.8  # set 1.0 for wheels to block to zero rotation
 
@@ -661,7 +659,6 @@ if __name__ == "__main__":
             a[1] = 0
         if k == key.DOWN:
             a[2] = 0
-
     env = CarRacing()
     env.render()
     env.viewer.window.on_key_press = key_press
@@ -678,6 +675,8 @@ if __name__ == "__main__":
         steps = 0
         restart = False
         while True:
+            a[1] = 0.1
+            a[0] = env.car.offset + env.car.angle
             s, r, done, info = env.step(a)
             total_reward += r
             if steps % 200 == 0 or done:
