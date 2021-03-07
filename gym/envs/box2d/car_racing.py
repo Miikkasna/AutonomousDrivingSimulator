@@ -445,8 +445,8 @@ class CarRacing(gym.Env, EzPickle):
         p2 = self.road[self.car.curren_tile].center_p
         p1 = self.road[self.car.curren_tile - FUTURE_SIGHT].center_p
         p.poly = [(p1[0], p1[1]), (p2[0], p2[1]) ]
-        p.color = (0.0,  0.0, 0.0)
-        self.viewer.draw_polyline(p.poly, color=p.color, linewidth=5)
+        p.color = (0.0,  255, 0.0)
+        self.viewer.draw_polyline(p.poly, color=p.color, linewidth=2)
 
         #calculate stuff
         self.car.offset = self.calcOffset(p1, p2, self.car.hull.position)
@@ -675,7 +675,7 @@ if __name__ == "__main__":
         steps = 0
         restart = False
         while True:
-            a[1] = 0.1
+            a[1] = 0.02*(1-env.car.offset)
             a[0] = env.car.offset + env.car.angle
             s, r, done, info = env.step(a)
             total_reward += r
