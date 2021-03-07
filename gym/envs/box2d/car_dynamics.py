@@ -68,7 +68,7 @@ class Car:
         self.wheels = []
         self.fuel_spent = 0.0
         self.curren_tile = None
-        self.future_tile = None
+        self.offset = 0
         mu, sigma = 1, 0.2 # mean and standard deviation
         self.gaussianFriction = np.random.normal(mu, sigma, 1000)
         WHEEL_POLY = [

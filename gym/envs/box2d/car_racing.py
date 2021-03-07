@@ -73,6 +73,7 @@ BORDER_MIN_COUNT = 4
 ROAD_COLOR = [0.4, 0.4, 0.4]
 
 FRICTION = 0.4
+FUTURE_SIGHT = 2
 class FrictionDetector(contactListener):
     def __init__(self, env):
         contactListener.__init__(self)
@@ -106,7 +107,6 @@ class FrictionDetector(contactListener):
         if begin:
             obj.tiles.add(tile)
             self.env.car.curren_tile = tile.road_id
-            self.env.car.future_tile = tile.road_id + 5
             #self.env.car.future_tile = 
             if not tile.road_visited:
                 tile.road_visited = True
@@ -442,15 +442,11 @@ class CarRacing(gym.Env, EzPickle):
             pass
         p = Particle()
         p1 = self.road[self.car.curren_tile].center_p
-        if self.car.future_tile < self.road[-1].road_id:
-            p2 = self.road[self.car.future_tile].center_p
-        else:
-            p1 = self.road[-4].center_p
-            p2 = self.road[-1].center_p
-
+        p2 = self.road[self.car.curren_tile - FUTURE_SIGHT].center_p
         p.poly = [(p1[0], p1[1]), (p2[0], p2[1]) ]
         p.color = (0.0,  0.0, 0.0)
         self.viewer.draw_polyline(p.poly, color=p.color, linewidth=5)
+        self.car.offset = self.calcOffset(p1, p2, self.car.hull.position)
 
         arr = None
         win = self.viewer.window
@@ -495,6 +491,14 @@ class CarRacing(gym.Env, EzPickle):
         arr = arr[::-1, :, 0:3]
 
         return arr
+    def calcOffset(self, p1, p2, p3):
+        p1 = np.array(p1)
+        p2 = np.array(p2)
+        p3 = np.array(p3)
+        side = ((p3[0]-p2[0])*(p2[1]-p1[1]) - (p2[0]-p1[0])*(p3[1]-p2[1]))/abs((p3[0]-p2[0])*(p2[1]-p1[1]) - (p2[0]-p1[0])*(p3[1]-p2[1]))
+        offset = np.linalg.norm(np.cross(p2-p1, p1-p3))/np.linalg.norm(p2-p1)*side
+        return offset/TRACK_WIDTH
+        #return ()/(TRACK_WIDTH)
 
     def close(self):
         if self.viewer is not None:
@@ -611,7 +615,7 @@ class CarRacing(gym.Env, EzPickle):
         )
         vl.draw(gl.GL_QUADS)
         vl.delete()
-        self.score_label.text = "%04i" % self.reward
+        self.score_label.text = "%04i" % int(100*self.car.offset)
         self.score_label.draw()
 
 
