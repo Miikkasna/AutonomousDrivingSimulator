@@ -4,10 +4,15 @@ original gym repository https://github.com/openai/gym.git
 
 
 Current status:
+
 Low friction added
-Neural network class added (modified from: Jason Brownlee on November 7, 2016 in Code Algorithms From Scratch, https://machinelearningmastery.com/implement-backpropagation-algorithm-scratch-python/)\n
-Center point offset and angle offset measures added\n
-P-control driving added\
+
+Neural network class added (modified from: Jason Brownlee on November 7, 2016 in Code Algorithms From Scratch, https://machinelearningmastery.com/implement-backpropagation-algorithm-scratch-python/)
+
+Center point offset and angle offset measures added
+
+P-control driving added
+
 
 
 
