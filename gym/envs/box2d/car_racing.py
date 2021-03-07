@@ -73,6 +73,7 @@ BORDER_MIN_COUNT = 4
 ROAD_COLOR = [0.4, 0.4, 0.4]
 
 FRICTION = 0.4
+MAX_ANGLE = 90
 FUTURE_SIGHT = 2
 class FrictionDetector(contactListener):
     def __init__(self, env):
@@ -441,12 +442,18 @@ class CarRacing(gym.Env, EzPickle):
         class Particle:
             pass
         p = Particle()
-        p1 = self.road[self.car.curren_tile].center_p
-        p2 = self.road[self.car.curren_tile - FUTURE_SIGHT].center_p
+        p2 = self.road[self.car.curren_tile].center_p
+        p1 = self.road[self.car.curren_tile - FUTURE_SIGHT].center_p
         p.poly = [(p1[0], p1[1]), (p2[0], p2[1]) ]
         p.color = (0.0,  0.0, 0.0)
         self.viewer.draw_polyline(p.poly, color=p.color, linewidth=5)
+
+        #calculate stuff
         self.car.offset = self.calcOffset(p1, p2, self.car.hull.position)
+        p3 = self.car.wheels[2].position
+        p4 = self.car.wheels[0].position
+        self.car.angle = self.calcAngle(p1, p2, p3, p4)
+
 
         arr = None
         win = self.viewer.window
@@ -491,14 +498,22 @@ class CarRacing(gym.Env, EzPickle):
         arr = arr[::-1, :, 0:3]
 
         return arr
-    def calcOffset(self, p1, p2, p3):
+    def calcOffset(self, p1, p2, p3): #normalized with tack width
         p1 = np.array(p1)
         p2 = np.array(p2)
         p3 = np.array(p3)
-        side = ((p3[0]-p2[0])*(p2[1]-p1[1]) - (p2[0]-p1[0])*(p3[1]-p2[1]))/abs((p3[0]-p2[0])*(p2[1]-p1[1]) - (p2[0]-p1[0])*(p3[1]-p2[1]))
+        side = ((p3[0]-p2[0])*(p2[1]-p1[1]) - (p2[0]-p1[0])*(p3[1]-p2[1]))
+        side /= abs(side)
         offset = np.linalg.norm(np.cross(p2-p1, p1-p3))/np.linalg.norm(p2-p1)*side
         return offset/TRACK_WIDTH
         #return ()/(TRACK_WIDTH)
+    def calcAngle(self, p1, p2, p3, p4):
+        v1 = -np.array(p1) + np.array(p2)
+        v2 = -np.array(p3) + np.array(p4)
+        signed_angle = math.atan2(v2[1],v2[0]) - math.atan2(v1[1],v1[0])
+        if abs(signed_angle) > np.pi:
+            signed_angle += 2*np.pi
+        return np.rad2deg(signed_angle)/MAX_ANGLE
 
     def close(self):
         if self.viewer is not None:
@@ -615,7 +630,7 @@ class CarRacing(gym.Env, EzPickle):
         )
         vl.draw(gl.GL_QUADS)
         vl.delete()
-        self.score_label.text = "%04i" % int(100*self.car.offset)
+        self.score_label.text = "%04i" % int(100*self.car.angle)
         self.score_label.draw()
 
 
