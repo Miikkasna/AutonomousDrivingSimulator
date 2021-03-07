@@ -1,19 +1,24 @@
+# code modified from: Jason Brownlee on November 7, 2016 in Code Algorithms From Scratch, https://machinelearningmastery.com/implement-backpropagation-algorithm-scratch-python/)
 import numpy as np
 from math import exp
 from random import seed
 from random import random
 class NeuralNetwork():
     # Initialize a network
-    def __init__(self, n_inputs, n_hidden, n_outputs):
+    def __init__(self, n_inputs, hidden, n_outputs):
         self.network = list()
-        hidden_layer = [{'weights':[random() for i in range(n_inputs + 1)]} for i in range(n_hidden)]
-        self.network.append(hidden_layer)
-        output_layer = [{'weights':[random() for i in range(n_hidden + 1)]} for i in range(n_outputs)]
+        prev_nodes = n_inputs
+        for n_hidden in hidden:
+            hidden_layer = [{'weights':[random() for i in range(prev_nodes + 1)]} for i in range(n_hidden)] #last weight is bias
+            self.network.append(hidden_layer)
+            prev_nodes = n_hidden
+        output_layer = [{'weights':[random() for i in range(prev_nodes + 1)]} for i in range(n_outputs)]
         self.network.append(output_layer)
+        print(self.network)
 
     # Calculate neuron activation for an input
     def activate(self, weights, inputs):
-        activation = weights[-1]
+        activation = weights[-1] #bias
         for i in range(len(weights)-1):
             activation += weights[i] * inputs[i]
         return activation
@@ -35,7 +40,7 @@ class NeuralNetwork():
         return inputs
 
     # Calculate the derivative of an neuron output
-    def transfer_derivative(self, output):
+    def sigmoid_derivative(self, output):
         return output * (1.0 - output)
 
     # Backpropagate error and store in neurons
@@ -55,7 +60,7 @@ class NeuralNetwork():
                     errors.append(expected[j] - neuron['output'])
             for j in range(len(layer)):
                 neuron = layer[j]
-                neuron['delta'] = errors[j] * self.transfer_derivative(neuron['output'])
+                neuron['delta'] = errors[j] * self.sigmoid_derivative(neuron['output'])
 
     # Update network weights with error
     def update_weights(self, network, row, l_rate):
@@ -105,7 +110,7 @@ dataset_y = [[0,1],
 n_inputs = len(dataset_x[0])
 n_outputs = len(dataset_y[0])
 print(n_outputs)
-NN = NeuralNetwork(n_inputs, 2, n_outputs)
+NN = NeuralNetwork(n_inputs, [3, 3], n_outputs)
 NN.train_network(dataset_x, dataset_y, 0.5, 20)
 for layer in NN.network:
 	print(layer)
