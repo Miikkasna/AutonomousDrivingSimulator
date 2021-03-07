@@ -85,6 +85,7 @@ class NeuralNetwork():
                 self.update_weights(self.network, row, l_rate)
             print('>epoch=%d, lrate=%.3f, error=%.3f' % (epoch, l_rate, sum_error))
 
+'''
 # Test training backprop algorithm
 seed(1)
 dataset_x = [[2.7810836,2.550537003],
@@ -115,3 +116,4 @@ NN.train_network(dataset_x, dataset_y, 0.5, 20)
 for layer in NN.network:
 	print(layer)
 print(NN.forward_propagate([0.2, 0.3]))
+'''
