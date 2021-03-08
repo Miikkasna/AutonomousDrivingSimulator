@@ -1,3 +1,3 @@
 import numpy as np
-
-print(np.array(2))
+import random
+print(random.random())

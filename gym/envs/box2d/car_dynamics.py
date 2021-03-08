@@ -12,6 +12,7 @@ import math
 import Box2D
 from Box2D.b2 import (edgeShape, circleShape, fixtureDef, polygonShape, revoluteJointDef, contactListener, shape)
 import random
+import NN
 
 SIZE = 0.02
 ENGINE_POWER = 100000000*SIZE*SIZE/2
@@ -70,6 +71,7 @@ class Car:
         self.curren_tile = None
         self.offset = 0
         self.angle = 0
+        self.current_network = None
         mu, sigma = 1, 0.2 # mean and standard deviation
         self.gaussianFriction = np.random.normal(mu, sigma, 1000)
         WHEEL_POLY = [

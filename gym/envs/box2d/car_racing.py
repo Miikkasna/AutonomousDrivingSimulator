@@ -48,6 +48,7 @@ import pyglet, random
 
 pyglet.options["debug_gl"] = False
 from pyglet import gl
+import NN
 
 STATE_W = 96  # less than Atari 160x192
 STATE_H = 96
@@ -444,7 +445,7 @@ class CarRacing(gym.Env, EzPickle):
             return  # reset() not called yet
 
         # Animate zoom first second:
-        zoom = 0.1 * SCALE * max(1 - self.t, 0) + ZOOM * SCALE * min(self.t, 1)
+        zoom = SCALE#0.1 * SCALE * max(1 - self.t, 0) + ZOOM * SCALE * min(self.t, 1)
         scroll_x = self.car.hull.position[0]
         scroll_y = self.car.hull.position[1]
         angle = -self.car.hull.angle
@@ -675,6 +676,7 @@ if __name__ == "__main__":
     stps = 0
     while isopen:
         env.reset()
+        env.car.current_network = NN.NeuralNetwork(4, [3], 2)
         total_reward = 0.0
         steps = 0
         restart = False
