@@ -50,10 +50,10 @@ class NeuralNetwork():
 
     # Backpropagate error and store in neurons
     def backward_propagate_error(self, expected):
-        for i in reversed(range(len(network))):
+        for i in reversed(range(len(self.network))):
             layer = self.network[i]
             errors = list()
-            if i != len(network)-1:
+            if i != len(self.network)-1:
                 for j in range(len(layer)):
                     error = 0.0
                     for neuron in self.network[i + 1]:
@@ -72,7 +72,7 @@ class NeuralNetwork():
         for i in range(len(self.network)):
             inputs = row
             if i != 0:
-                inputs = [neuron['output'] for neuron in network[i - 1]]
+                inputs = [neuron['output'] for neuron in self.network[i - 1]]
             for neuron in self.network[i]:
                 for j in range(len(inputs)):
                     neuron['weights'][j] += l_rate * neuron['delta'] * inputs[j]
@@ -84,7 +84,6 @@ class NeuralNetwork():
                     if random() < MutationChance:
                         change = random()*2 - 1
                         neuron['weights'][i] += MutationStrength*change
-                        print('mutatet:', change)
     # Train a network for a fixed number of epochs
     def train_network(self, train_x, train_y, l_rate, n_epoch):
         for epoch in range(n_epoch):

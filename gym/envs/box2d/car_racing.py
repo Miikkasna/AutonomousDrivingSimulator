@@ -75,7 +75,7 @@ ROAD_COLOR = [0.4, 0.4, 0.4]
 
 FRICTION = 0.4
 MAX_ANGLE = 90
-FUTURE_SIGHT = 2
+FUTURE_SIGHT = 6
 
 class FrictionDetector(contactListener):
     def __init__(self, env):
@@ -402,11 +402,19 @@ class CarRacing(gym.Env, EzPickle):
     def calcInputs(self):
         #calculate stuff
         p2 = self.road[self.car.curren_tile].center_p
-        p1 = self.road[self.car.curren_tile - FUTURE_SIGHT].center_p
-        self.car.offset = self.calcOffset(p1, p2, self.car.hull.position)
+        p1 = self.road[self.car.curren_tile - 2].center_p
+        self.car.offset = self.calcOffset(p1, p2, self.car.hull.position)/TRACK_WIDTH
         p3 = self.car.wheels[2].position
         p4 = self.car.wheels[0].position
-        self.car.angle = self.calcAngle(p1, p2, p3, p4)
+        self.car.angle = self.calcAngle(p1, p2, p3, p4)/MAX_ANGLE
+        p3 = p2
+        if (self.car.curren_tile + FUTURE_SIGHT) < len(self.road):
+            p4 = self.road[self.car.curren_tile + FUTURE_SIGHT].center_p
+        else:
+            p4 = self.road[-1].center_p
+        self.car.curve_steepness = self.calcAngle(p1, p2, p3, p4)/MAX_ANGLE
+
+
     def calcOffset(self, p1, p2, p3): #normalized with tack width
         p1 = np.array(p1)
         p2 = np.array(p2)
@@ -414,13 +422,13 @@ class CarRacing(gym.Env, EzPickle):
         side = ((p3[0]-p2[0])*(p2[1]-p1[1]) - (p2[0]-p1[0])*(p3[1]-p2[1]))
         side /= -abs(side)
         offset = np.linalg.norm(np.cross(p2-p1, p1-p3))/np.linalg.norm(p2-p1)*side
-        return offset/TRACK_WIDTH
+        return offset
         #return ()/(TRACK_WIDTH)
     def calcAngle(self, p1, p2, p3, p4):
         v1 = -np.array(p1) + np.array(p2)
         v2 = -np.array(p3) + np.array(p4)
         signed_angle = math.atan2( v1[0]*v2[1]- v1[1]*v2[0], v1[0]*v2[0] + v1[1]*v2[1] )
-        return np.rad2deg(signed_angle)/MAX_ANGLE
+        return np.rad2deg(signed_angle)
 
 
 
@@ -467,7 +475,7 @@ class CarRacing(gym.Env, EzPickle):
             pass
         p = Particle()
         p2 = self.road[self.car.curren_tile].center_p
-        p1 = self.road[self.car.curren_tile - FUTURE_SIGHT].center_p
+        p1 = self.road[self.car.curren_tile - 2].center_p
         p.poly = [(p1[0], p1[1]), (p2[0], p2[1]) ]
         p.color = (0.0,  255, 0.0)
         self.viewer.draw_polyline(p.poly, color=p.color, linewidth=2)
@@ -681,7 +689,8 @@ if __name__ == "__main__":
         steps = 0
         restart = False
         while True:
-            a[1] = 0.3*(1-env.car.offset)
+            a[1] = 0.5*(1-env.car.curve_steepness)
+            a[2] = env.car.curve_steepness
             a[0] = env.car.offset + env.car.angle
             s, r, done, info = env.step(a)
             total_reward += r
