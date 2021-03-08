@@ -13,6 +13,9 @@ Center point offset and angle offset measures added
 
 P-control driving added
 
+Mutation to Neural Network added
+
+Curve steepness input added
 
 
 
