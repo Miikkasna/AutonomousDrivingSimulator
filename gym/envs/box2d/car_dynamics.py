@@ -14,8 +14,8 @@ from Box2D.b2 import (edgeShape, circleShape, fixtureDef, polygonShape, revolute
 import random
 
 SIZE = 0.02
-ENGINE_POWER = 100000000*SIZE*SIZE
-WHEEL_MOMENT_OF_INERTIA = 4000*SIZE*SIZE
+ENGINE_POWER = 100000000*SIZE*SIZE/2
+WHEEL_MOMENT_OF_INERTIA = 4000*SIZE*SIZE/2
 FRICTION_LIMIT = 1000000*SIZE*SIZE # friction ~= mass ~= size^2 (calculated implicitly using density)
 print(FRICTION_LIMIT)
 WHEEL_R = 27

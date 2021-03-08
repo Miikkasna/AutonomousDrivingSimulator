@@ -75,6 +75,7 @@ ROAD_COLOR = [0.4, 0.4, 0.4]
 FRICTION = 0.4
 MAX_ANGLE = 90
 FUTURE_SIGHT = 2
+
 class FrictionDetector(contactListener):
     def __init__(self, env):
         contactListener.__init__(self)
@@ -257,8 +258,8 @@ class CarRacing(gym.Env, EzPickle):
             elif pass_through_start and i1 == -1:
                 i1 = i
                 break
-        if self.verbose == 1:
-            print("Track generation: %i..%i -> %i-tiles track" % (i1, i2, i2 - i1))
+        #if self.verbose == 1:
+            #print("Track generation: %i..%i -> %i-tiles track" % (i1, i2, i2 - i1))
         assert i1 != -1
         assert i2 != -1
 
@@ -347,6 +348,7 @@ class CarRacing(gym.Env, EzPickle):
                     ([b1_l, b1_r, b2_r, b2_l], (1, 1, 1) if i % 2 == 0 else (1, 0, 0))
                 )
         self.track = track
+        #print("new track")
         return True
 
     def reset(self):
@@ -361,11 +363,6 @@ class CarRacing(gym.Env, EzPickle):
             success = self._create_track()
             if success:
                 break
-            if self.verbose == 1:
-                print(
-                    "retry to generate track (normal if there are not many"
-                    "instances of this message)"
-                )
         self.car = Car(self.world, *self.track[0][1:4])
 
         return self.step(None)[0]
@@ -375,13 +372,11 @@ class CarRacing(gym.Env, EzPickle):
             self.car.steer(-action[0])
             self.car.gas(action[1])
             self.car.brake(action[2])
-
         self.car.step(1.0 / FPS)
         self.world.Step(1.0 / FPS, 6 * 30, 2 * 30)
         self.t += 1.0 / FPS
-
+        self.calcInputs()
         self.state = self.render("state_pixels")
-
         step_reward = 0
         done = False
         if action is not None:  # First step without action, called from reset()
@@ -397,8 +392,36 @@ class CarRacing(gym.Env, EzPickle):
             if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
                 done = True
                 step_reward = -100
+            if abs(self.car.offset) > 1:
+                done = True
 
         return self.state, step_reward, done, {}
+
+
+    def calcInputs(self):
+        #calculate stuff
+        p2 = self.road[self.car.curren_tile].center_p
+        p1 = self.road[self.car.curren_tile - FUTURE_SIGHT].center_p
+        self.car.offset = self.calcOffset(p1, p2, self.car.hull.position)
+        p3 = self.car.wheels[2].position
+        p4 = self.car.wheels[0].position
+        self.car.angle = self.calcAngle(p1, p2, p3, p4)
+    def calcOffset(self, p1, p2, p3): #normalized with tack width
+        p1 = np.array(p1)
+        p2 = np.array(p2)
+        p3 = np.array(p3)
+        side = ((p3[0]-p2[0])*(p2[1]-p1[1]) - (p2[0]-p1[0])*(p3[1]-p2[1]))
+        side /= -abs(side)
+        offset = np.linalg.norm(np.cross(p2-p1, p1-p3))/np.linalg.norm(p2-p1)*side
+        return offset/TRACK_WIDTH
+        #return ()/(TRACK_WIDTH)
+    def calcAngle(self, p1, p2, p3, p4):
+        v1 = -np.array(p1) + np.array(p2)
+        v2 = -np.array(p3) + np.array(p4)
+        signed_angle = math.atan2( v1[0]*v2[1]- v1[1]*v2[0], v1[0]*v2[0] + v1[1]*v2[1] )
+        return np.rad2deg(signed_angle)/MAX_ANGLE
+
+
 
     def render(self, mode="human"):
         assert mode in ["human", "state_pixels", "rgb_array"]
@@ -448,13 +471,6 @@ class CarRacing(gym.Env, EzPickle):
         p.color = (0.0,  255, 0.0)
         self.viewer.draw_polyline(p.poly, color=p.color, linewidth=2)
 
-        #calculate stuff
-        self.car.offset = self.calcOffset(p1, p2, self.car.hull.position)
-        p3 = self.car.wheels[2].position
-        p4 = self.car.wheels[0].position
-        self.car.angle = self.calcAngle(p1, p2, p3, p4)
-
-
         arr = None
         win = self.viewer.window
         win.switch_to()
@@ -498,20 +514,7 @@ class CarRacing(gym.Env, EzPickle):
         arr = arr[::-1, :, 0:3]
 
         return arr
-    def calcOffset(self, p1, p2, p3): #normalized with tack width
-        p1 = np.array(p1)
-        p2 = np.array(p2)
-        p3 = np.array(p3)
-        side = ((p3[0]-p2[0])*(p2[1]-p1[1]) - (p2[0]-p1[0])*(p3[1]-p2[1]))
-        side /= -abs(side)
-        offset = np.linalg.norm(np.cross(p2-p1, p1-p3))/np.linalg.norm(p2-p1)*side
-        return offset/TRACK_WIDTH
-        #return ()/(TRACK_WIDTH)
-    def calcAngle(self, p1, p2, p3, p4):
-        v1 = -np.array(p1) + np.array(p2)
-        v2 = -np.array(p3) + np.array(p4)
-        signed_angle = math.atan2( v1[0]*v2[1]- v1[1]*v2[0], v1[0]*v2[0] + v1[1]*v2[1] )
-        return np.rad2deg(signed_angle)/MAX_ANGLE
+
 
     def close(self):
         if self.viewer is not None:
@@ -669,21 +672,24 @@ if __name__ == "__main__":
 
         env = Monitor(env, "/tmp/video-test", force=True)
     isopen = True
+    stps = 0
     while isopen:
         env.reset()
         total_reward = 0.0
         steps = 0
         restart = False
         while True:
-            a[1] = 0.02*(1-env.car.offset)
+            a[1] = 0.3*(1-env.car.offset)
             a[0] = env.car.offset + env.car.angle
             s, r, done, info = env.step(a)
             total_reward += r
-            if steps % 200 == 0 or done:
-                print("\naction " + str(["{:+0.2f}".format(x) for x in a]))
+            if done:
+                #print("\naction " + str(["{:+0.2f}".format(x) for x in a]))
                 print("step {} total_reward {:+0.2f}".format(steps, total_reward))
             steps += 1
-            isopen = env.render()
+            if stps % 1 == 0:
+                isopen = env.render()
+            stps += 1
             if done or restart or isopen == False:
                 break
     env.close()
