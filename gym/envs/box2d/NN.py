@@ -41,7 +41,7 @@ class NeuralNetwork():
                 activation = self.activate(neuron['weights'], inputs)
                 neuron['output'] = self.sigmoid(activation)
                 new_inputs.append(neuron['output'])
-            inputs = new_inputs
+            inputs = 2*np.array(new_inputs) - 1 #map to -1 to 1
         return inputs
 
     # Calculate the derivative of an neuron output

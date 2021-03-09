@@ -75,7 +75,10 @@ ROAD_COLOR = [0.4, 0.4, 0.4]
 
 FRICTION = 0.4
 MAX_ANGLE = 90
+MAX_SPEED = 50 #tested
 FUTURE_SIGHT = 6
+p_control = True
+NN_control = False
 
 class FrictionDetector(contactListener):
     def __init__(self, env):
@@ -640,7 +643,7 @@ class CarRacing(gym.Env, EzPickle):
         )
         vl.draw(gl.GL_QUADS)
         vl.delete()
-        self.score_label.text = "%04i" % int(100*self.car.angle)
+        self.score_label.text = "%04i" % np.linalg.norm(self.car.hull.angularVelocity)
         self.score_label.draw()
 
 
@@ -678,7 +681,6 @@ if __name__ == "__main__":
     record_video = False
     if record_video:
         from gym.wrappers.monitor import Monitor
-
         env = Monitor(env, "/tmp/video-test", force=True)
     isopen = True
     stps = 0
@@ -689,10 +691,19 @@ if __name__ == "__main__":
         steps = 0
         restart = False
         while True:
-            a[1] = 0.5*(1-env.car.curve_steepness)
-            a[2] = env.car.curve_steepness
-            a[0] = env.car.offset + env.car.angle
-            s, r, done, info = env.step(a)
+
+            speed = np.linalg.norm(env.car.linearVelocity)/MAX_SPEED
+            offset = env.car.offset
+            body_angle = env.car.angle
+            curve_steepness = env.car.curve_steepness
+            inputs = (speed, offset, body_angle, curve_steepness)
+
+            if p_control:
+                a = P_controller(*inputs)
+            elif NN_control:
+                output = env.car.current_network.forward_propagate(inputs)
+                a
+            s, r, done, info = env.step([])
             total_reward += r
             if done:
                 #print("\naction " + str(["{:+0.2f}".format(x) for x in a]))
@@ -704,3 +715,22 @@ if __name__ == "__main__":
             if done or restart or isopen == False:
                 break
     env.close()
+
+
+def P_controller(speed, offset, body_angle, curve_steepness):
+    a = np.array([0.0, 0.0, 0.0])
+    throttle = 0.5 - 2*speed*abs(curve_steepness)
+    if throttle > 0:
+        a[1] = throttle
+    else:
+        a[2] = -throttle
+    a[0] = offset + body_angle
+    return a
+def NN_controller(output):
+    a = np.array([0.0, 0.0, 0.0])
+    throttle = output[1]
+    if throttle > 0:
+        a[1] = throttle
+    else:
+        a[2] = -throttle
+    a[0] = output[0]
