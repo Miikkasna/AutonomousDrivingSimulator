@@ -43,7 +43,7 @@ import gym
 from gym import spaces
 from car_dynamics import Car
 from gym.utils import seeding, EzPickle
-
+from copy import deepcopy
 import pyglet, random
 
 pyglet.options["debug_gl"] = False
@@ -373,6 +373,9 @@ class CarRacing(gym.Env, EzPickle):
 
     def step(self, action):
         if action is not None:
+            if self.tile_visited_count <= 4 and action[1] < 0.1:
+                action[1] = 0.1
+                action[2] = 0
             self.car.steer(-action[0])
             self.car.gas(action[1])
             self.car.brake(action[2])
@@ -396,8 +399,13 @@ class CarRacing(gym.Env, EzPickle):
             if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
                 done = True
                 step_reward = -100
-            if abs(self.car.offset) > 1:
+            elif abs(self.car.offset) > 1:
                 done = True
+            elif abs(self.car.angle) > 1:
+                done = True
+            elif speed < MIN_SPEED:
+                if self.tile_visited_count > 4:
+                    done = True #too slow
 
         return self.state, step_reward, done, {}
 
@@ -647,75 +655,6 @@ class CarRacing(gym.Env, EzPickle):
         self.score_label.draw()
 
 
-if __name__ == "__main__":
-    from pyglet.window import key
-
-    a = np.array([0.0, 0.0, 0.0])
-
-    def key_press(k, mod):
-        global restart
-        if k == 0xFF0D:
-            restart = True
-        if k == key.LEFT:
-            a[0] = -1.0
-        if k == key.RIGHT:
-            a[0] = +1.0
-        if k == key.UP:
-            a[1] = +0.3
-        if k == key.DOWN:
-            a[2] = +0.8  # set 1.0 for wheels to block to zero rotation
-
-    def key_release(k, mod):
-        if k == key.LEFT and a[0] == -1.0:
-            a[0] = 0
-        if k == key.RIGHT and a[0] == +1.0:
-            a[0] = 0
-        if k == key.UP:
-            a[1] = 0
-        if k == key.DOWN:
-            a[2] = 0
-    env = CarRacing()
-    env.render()
-    env.viewer.window.on_key_press = key_press
-    env.viewer.window.on_key_release = key_release
-    record_video = False
-    if record_video:
-        from gym.wrappers.monitor import Monitor
-        env = Monitor(env, "/tmp/video-test", force=True)
-    isopen = True
-    stps = 0
-    while isopen:
-        env.reset()
-        env.car.current_network = NN.NeuralNetwork(4, [3], 2)
-        total_reward = 0.0
-        steps = 0
-        restart = False
-        while True:
-
-            speed = np.linalg.norm(env.car.linearVelocity)/MAX_SPEED
-            offset = env.car.offset
-            body_angle = env.car.angle
-            curve_steepness = env.car.curve_steepness
-            inputs = (speed, offset, body_angle, curve_steepness)
-
-            if p_control:
-                a = P_controller(*inputs)
-            elif NN_control:
-                output = env.car.current_network.forward_propagate(inputs)
-                a
-            s, r, done, info = env.step([])
-            total_reward += r
-            if done:
-                #print("\naction " + str(["{:+0.2f}".format(x) for x in a]))
-                print("step {} total_reward {:+0.2f}".format(steps, total_reward))
-            steps += 1
-            if stps % 1 == 0:
-                isopen = env.render()
-            stps += 1
-            if done or restart or isopen == False:
-                break
-    env.close()
-
 
 def P_controller(speed, offset, body_angle, curve_steepness):
     a = np.array([0.0, 0.0, 0.0])
@@ -734,3 +673,78 @@ def NN_controller(output):
     else:
         a[2] = -throttle
     a[0] = output[0]
+    return a
+
+p_control = False
+MIN_SPEED = 0.1
+if __name__ == "__main__":
+    from pyglet.window import key
+
+    a = np.array([0.0, 0.0, 0.0])
+    MutationChance = 0.8
+    MutationStrength = 0.8
+
+    def key_press(k, mod):
+        global restart
+        global MutationChance
+        global MutationStrength
+        if k == 0xFF0D:
+            restart = True
+        if k == key.LEFT:
+            MutationChance -= 0.1
+            MutationStrength -= 0.1
+        if k == key.RIGHT:
+            MutationChance += 0.1
+            MutationStrength += 0.1
+    def key_release(k, mod):
+        if k == key.LEFT and a[0] == -1.0:
+            a[0] = 0
+    env = CarRacing()
+    env.render()
+    env.viewer.window.on_key_press = key_press
+    env.viewer.window.on_key_release = key_release
+    isopen = True
+    current_network = NN.NeuralNetwork(4, [3], 2)
+    best_network = deepcopy(current_network)
+    rounds = 0
+    while isopen:
+        env.reset()
+        
+        total_reward = 0.0
+        steps = 0
+        restart = False
+        
+        while True:
+            speed = np.linalg.norm(env.car.hull.linearVelocity)/MAX_SPEED
+            offset = env.car.offset
+            body_angle = env.car.angle
+            curve_steepness = env.car.curve_steepness
+            inputs = (speed, offset, body_angle, curve_steepness)
+
+
+            if p_control:
+                a = P_controller(*inputs)
+            else:
+                output = current_network.forward_propagate(inputs)
+                a = NN_controller(output)
+
+            s, r, done, info = env.step(a)
+            total_reward += r
+            if done:
+                rounds += 1
+                print("step {} total_reward {:+0.2f}, mutation: ({}, {})".format(steps, total_reward, MutationChance, MutationStrength))
+                current_network.fitness = total_reward
+                if current_network.fitness > best_network.fitness:
+                    best_network = deepcopy(current_network)
+                    current_network.mutate(MutationChance, MutationStrength)
+                else:
+                    current_network = deepcopy(best_network)
+                    current_network.mutate(MutationChance, MutationStrength)
+
+            if rounds % 20 == 0:
+                isopen = env.render()
+            steps += 1
+            if done or restart or isopen == False:
+                break
+    env.close()
+
