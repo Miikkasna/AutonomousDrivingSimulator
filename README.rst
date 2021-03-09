@@ -17,6 +17,8 @@ Mutation to Neural Network added
 
 Curve steepness input added
 
+Neural network controller added
+
 
 
 
