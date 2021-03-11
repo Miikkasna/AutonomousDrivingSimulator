@@ -58,7 +58,7 @@ WINDOW_W = 1000
 WINDOW_H = 800
 
 SCALE = 6.0  # Track scale
-TRACK_RAD = 300 / SCALE  # Track is heavily morphed circle with this radius
+TRACK_RAD = 700 / SCALE  # Track is heavily morphed circle with this radius
 PLAYFIELD = 2000 / SCALE  # Game over boundary
 FPS = 50  # Frames per second
 ZOOM = 1    #2.7  # Camera zoom
@@ -113,7 +113,6 @@ class FrictionDetector(contactListener):
         if begin:
             obj.tiles.add(tile)
             self.env.car.curren_tile = tile.road_id
-            #self.env.car.future_tile = 
             if not tile.road_visited:
                 tile.road_visited = True
                 self.env.reward += 1000.0 / len(self.env.track)
@@ -298,8 +297,8 @@ class CarRacing(gym.Env, EzPickle):
 
         # Create tiles
         for i in range(len(track)):
-            alpha1, beta1, x1, y1 = track[i]
-            alpha2, beta2, x2, y2 = track[i - 1]
+            _, beta1, x1, y1 = track[i]
+            _, beta2, x2, y2 = track[i - 1]
             road1_l = (
                 x1 - TRACK_WIDTH * math.cos(beta1),
                 y1 - TRACK_WIDTH * math.sin(beta1),
@@ -326,7 +325,6 @@ class CarRacing(gym.Env, EzPickle):
             t.color = [ROAD_COLOR[0] + c, ROAD_COLOR[1] + c, ROAD_COLOR[2] + c]
             t.road_visited = False
             t.road_friction = FRICTION
-            #print(t.road_friction)
             t.fixtures[0].sensor = True
             self.road_poly.append(([road1_l, road1_r, road2_r, road2_l], t.color))
             self.road.append(t)
@@ -352,7 +350,6 @@ class CarRacing(gym.Env, EzPickle):
                     ([b1_l, b1_r, b2_r, b2_l], (1, 1, 1) if i % 2 == 0 else (1, 0, 0))
                 )
         self.track = track
-        #print("new track")
         return True
 
     def reset(self):
@@ -681,13 +678,15 @@ if __name__ == "__main__":
     from pyglet.window import key
 
     a = np.array([0.0, 0.0, 0.0])
-    MutationChance = 0.8
-    MutationStrength = 0.8
-
+    MutationChance = 0.6
+    MutationStrength = 0.6
+    show = True
     def key_press(k, mod):
         global restart
         global MutationChance
         global MutationStrength
+        global genSize
+        global show
         if k == 0xFF0D:
             restart = True
         if k == key.LEFT:
@@ -696,6 +695,12 @@ if __name__ == "__main__":
         if k == key.RIGHT:
             MutationChance += 0.1
             MutationStrength += 0.1
+        if k == key.UP:
+            genSize += 5
+        if k == key.DOWN:
+            genSize -= 5
+        if k == key.S:
+            show = not show
     def key_release(k, mod):
         if k == key.LEFT and a[0] == -1.0:
             a[0] = 0
@@ -704,16 +709,20 @@ if __name__ == "__main__":
     env.viewer.window.on_key_press = key_press
     env.viewer.window.on_key_release = key_release
     isopen = True
-    current_network = NN.NeuralNetwork(4, [3], 2)
-    best_network = deepcopy(current_network)
+    genSize = 200
+    networks = []
+    for i in range(genSize):
+        networks.append(NN.NeuralNetwork(4, [4], 2))
+    current_network = networks[0]
     rounds = 0
+    gen = 1
+    avgs = []
     while isopen:
         env.reset()
         
         total_reward = 0.0
         steps = 0
         restart = False
-        
         while True:
             speed = np.linalg.norm(env.car.hull.linearVelocity)/MAX_SPEED
             offset = env.car.offset
@@ -731,17 +740,37 @@ if __name__ == "__main__":
             s, r, done, info = env.step(a)
             total_reward += r
             if done:
-                rounds += 1
-                print("step {} total_reward {:+0.2f}, mutation: ({}, {})".format(steps, total_reward, MutationChance, MutationStrength))
                 current_network.fitness = total_reward
-                if current_network.fitness > best_network.fitness:
-                    best_network = deepcopy(current_network)
-                    current_network.mutate(MutationChance, MutationStrength)
-                else:
-                    current_network = deepcopy(best_network)
-                    current_network.mutate(MutationChance, MutationStrength)
+                avgs.append(total_reward)
+                current_network = networks[rounds]
+                rounds += 1
+                if rounds % 5 == 0 and rounds >= 5:
+                    avgfit = np.array(avgs).mean()
+                    avgs = []
+                    print("avg reward {:+0.2f}, mutation: ({:0.1f}, {:0.1f}), genSize: {}, generation: {}, round: {}".format(
+                        avgfit, MutationChance, MutationStrength, genSize, gen, rounds)
+                        )
+                
+                
 
-            if rounds % 20 == 0:
+            if rounds >= genSize:
+                pool = []
+                for i in range(len(networks)):
+                    pool_size = int(networks[i].fitness)
+                    for ii in range(pool_size):
+                        pool.append(i)
+                selection = np.random.choice(pool, genSize)
+                networks = np.array(networks)
+                temp = networks[selection]
+                networks = []
+                for i in range(temp.shape[0]):
+                    networks.append(deepcopy(temp[i]))
+                for i in range(len(networks)):
+                    networks[i].mutate(MutationChance, MutationStrength)
+                rounds = 0
+                gen += 1
+
+            if show:
                 isopen = env.render()
             steps += 1
             if done or restart or isopen == False:
