@@ -95,7 +95,8 @@ class NeuralNetwork():
                 self.backward_propagate_error(expected)
                 self.update_weights(row, l_rate)
             print('>epoch=%d, lrate=%.3f, error=%.3f' % (epoch, l_rate, sum_error))
-
+            #l_rate -= 0.003
+    
 '''
 # Test training backprop algorithm
 seed(1)
@@ -113,17 +114,17 @@ dataset_y = [[0,1],
 	[0,1],
 	[0,1],
 	[0,1],
-	[1,1],
 	[0,1],
 	[0,1],
-	[0,0],
+	[0,1],
+	[0,1],
 	[0,1],
 	[0,1]]
 n_inputs = len(dataset_x[0])
 n_outputs = len(dataset_y[0])
 print(n_outputs)
 NN = NeuralNetwork(n_inputs, [3, 3], n_outputs)
-NN.train_network(dataset_x, dataset_y, 0.5, 20)
+NN.train_network(dataset_x, dataset_y, 0.1, 20)
 for layer in NN.network:
 	print(layer)
 print(NN.forward_propagate([0.2, 0.3]))

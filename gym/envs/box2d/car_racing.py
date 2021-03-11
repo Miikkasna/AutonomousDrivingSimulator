@@ -729,12 +729,12 @@ if __name__ == "__main__":
 
     from tensorflow.keras import Sequential, layers, losses
     model = Sequential()
-    model.add(layers.Flatten(input_shape=(4, )))
-    model.add(layers.Dense(8, activation='sigmoid'))
+ 
+    model.add(layers.Dense(8, input_dim=4, activation='sigmoid'))
     model.add(layers.Dense(8, activation='sigmoid'))
     model.add(layers.Dense(2))
     model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
-    model.fit(train_x, train_y, epochs=5)
+    model.fit(train_x, train_y, epochs=50)
     weights = model.get_weights()
 
 
@@ -816,6 +816,6 @@ for i in range(1000):
 print("oma: ", time.time()-start)
 start = time.time()
 for i in range(1000):
-    model(np.array([np.array(test)]), training=False)
+    model.predict(np.array([np.array(tesd)]), batch_size=1)
 print("Keras: ", time.time()-start)
 '''
