@@ -49,7 +49,6 @@ import pyglet, random
 pyglet.options["debug_gl"] = False
 from pyglet import gl
 import NN
-
 STATE_W = 96  # less than Atari 160x192
 STATE_H = 96
 VIDEO_W = 600
@@ -671,14 +670,6 @@ def NN_controller(output):
         a[2] = -throttle
     a[0] = output[0]
     return a
-def create_training_set(setSize, trainer):
-    train_x = []
-    train_y = []
-    for i in range(setSize):
-        train_x.append(2*np.random.rand(trainer.size[0])-1)
-        train_x[i][0] = abs(train_x[i][0]) #speed input
-        train_y.append(deepcopy(trainer.forward_propagate(train_x[i])))
-    return np.array(train_x), np.array(train_y)
 
 p_control = False
 MIN_SPEED = 0.1
@@ -719,27 +710,25 @@ if __name__ == "__main__":
     isopen = True
     genSize = 10
     networks = []
-    trainer = np.load('C:\\Users\\miikk\\Documents\\networks.npy', allow_pickle=True)[1]
-    train_x, train_y = create_training_set(5000, trainer)
-    alpha = NN.NeuralNetwork(4, [4], 2)
-    #alpha.train_network(train_x, train_y, 0.1, 500)
     for i in range(genSize):
-        networks.append(deepcopy(alpha))
+        networks.append(NN.NeuralNetwork(4, [8, 8], 2))
     alpha = NN.NeuralNetwork(4, [8, 8], 2)
 
+    #keras test
+    trainer = np.load('C:\\Users\\miikk\\Documents\\networks.npy', allow_pickle=True)[1]
+    train_x, train_y = NN.create_training_set(5000, trainer)
     from tensorflow.keras import Sequential, layers, losses
     model = Sequential()
- 
     model.add(layers.Dense(8, input_dim=4, activation='sigmoid'))
     model.add(layers.Dense(8, activation='sigmoid'))
     model.add(layers.Dense(2))
     model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
     model.fit(train_x, train_y, epochs=50)
     weights = model.get_weights()
+    hybrid = NN.NeuralNetwork(4, [8, 8], 2)
+    hybrid.keras_weightswap(weights)
+    #----
 
-
-    #networks = np.load('C:\\Users\\miikk\\Documents\\networks.npy', allow_pickle=True)
-    #genSize = networks.shape[0]
     current_network = networks[0]
     rounds = 0
     gen = 1
@@ -762,7 +751,8 @@ if __name__ == "__main__":
                 a = P_controller(*inputs)
             else:
                 #output = current_network.forward_propagate(inputs)
-                output = model(np.array([np.array(inputs)]), training=False)[0]
+                #output = model(np.array([np.array(inputs)]), training=False)[0]
+                output = hybrid.forward_propagate(inputs)
                 a = NN_controller(output)
 
             s, r, done, info = env.step(a)
