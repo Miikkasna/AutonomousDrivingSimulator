@@ -19,6 +19,6 @@ Curve steepness input added
 
 Neural network controller added
 
-
+Evolution strategy training added
 
 
