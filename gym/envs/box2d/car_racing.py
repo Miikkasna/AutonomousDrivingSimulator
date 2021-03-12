@@ -75,7 +75,7 @@ ROAD_COLOR = [0.4, 0.4, 0.4]
 FRICTION = 0.4
 MAX_ANGLE = 90
 MAX_SPEED = 50 #tested
-FUTURE_SIGHT = 6
+FUTURE_SIGHT = 15
 p_control = True
 NN_control = False
 
@@ -437,7 +437,15 @@ class CarRacing(gym.Env, EzPickle):
         signed_angle = math.atan2( v1[0]*v2[1]- v1[1]*v2[0], v1[0]*v2[0] + v1[1]*v2[1] )
         return np.rad2deg(signed_angle)
 
+    def debug_line(self, p1, p2, color=(0.0,  255, 0.0)):
+        #debug line
+        class Particle:
+            pass
+        p = Particle()
 
+        p.poly = [(p1[0], p1[1]), (p2[0], p2[1]) ]
+        p.color = color
+        self.viewer.draw_polyline(p.poly, color=p.color, linewidth=2)
 
     def render(self, mode="human"):
         assert mode in ["human", "state_pixels", "rgb_array"]
@@ -477,15 +485,18 @@ class CarRacing(gym.Env, EzPickle):
         self.transform.set_rotation(angle)
         
         self.car.draw(self.viewer, mode != "state_pixels")
-        #debug line
-        class Particle:
-            pass
-        p = Particle()
+
+        #middle line
         p2 = self.road[self.car.curren_tile].center_p
         p1 = self.road[self.car.curren_tile - 2].center_p
-        p.poly = [(p1[0], p1[1]), (p2[0], p2[1]) ]
-        p.color = (0.0,  255, 0.0)
-        self.viewer.draw_polyline(p.poly, color=p.color, linewidth=2)
+        self.debug_line(p1, p2)
+        #curve forecast
+        p3 = p2
+        if (self.car.curren_tile + FUTURE_SIGHT) < len(self.road):
+            p4 = self.road[self.car.curren_tile + FUTURE_SIGHT].center_p
+        else:
+            p4 = self.road[-1].center_p
+        self.debug_line(p3, p4, color=(50, 50, 0))
 
         arr = None
         win = self.viewer.window
@@ -715,7 +726,7 @@ if __name__ == "__main__":
     alpha = NN.NeuralNetwork(4, [8, 8], 2)
 
     #keras test
-    trainer = np.load('C:\\Users\\miikk\\Documents\\networks.npy', allow_pickle=True)[1]
+    trainer = np.load('C:\\Users\\miikk\\Documents\\networks.npy', allow_pickle=True)[7]
     train_x, train_y = NN.create_training_set(5000, trainer)
     from tensorflow.keras import Sequential, layers, losses
     model = Sequential()
@@ -723,7 +734,7 @@ if __name__ == "__main__":
     model.add(layers.Dense(8, activation='sigmoid'))
     model.add(layers.Dense(2))
     model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
-    model.fit(train_x, train_y, epochs=50)
+    model.fit(train_x, train_y, epochs=60)
     weights = model.get_weights()
     hybrid = NN.NeuralNetwork(4, [8, 8], 2)
     hybrid.keras_weightswap(weights)
