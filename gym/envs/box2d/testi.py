@@ -1,6 +1,6 @@
 import numpy as np
 import random
 
+trainer = np.load('C:\\Users\\miikk\\Documents\\networks2.npy', allow_pickle=True)
 
-a = np.array(["eka", 'toka', 'kolmas'])
-print(a[0:-1])
+print(trainer.shape)

@@ -163,15 +163,23 @@ class CarRacing(gym.Env, EzPickle):
         self.road = []
         self.car.destroy()
 
-    def _create_track(self):
+    def _create_track(self, noises=[], rads=[]):
         CHECKPOINTS = 12
 
         # Create checkpoints
         checkpoints = []
         for c in range(CHECKPOINTS):
-            noise = self.np_random.uniform(0, 2 * math.pi * 1 / CHECKPOINTS)
+            if len(noises) <= c:
+                noise = self.np_random.uniform(0, 2 * math.pi * 1 / CHECKPOINTS)
+                noises.append(noise)
+            else:
+                noise = noises[c]
             alpha = 2 * math.pi * c / CHECKPOINTS + noise
-            rad = self.np_random.uniform(TRACK_RAD / 3, TRACK_RAD)
+            if len(rads) <= c:
+                rad = self.np_random.uniform(TRACK_RAD / 3, TRACK_RAD)
+                rads.append(rad)
+            else:
+                rad = rads[c]
 
             if c == 0:
                 alpha = 0
@@ -349,20 +357,23 @@ class CarRacing(gym.Env, EzPickle):
                     ([b1_l, b1_r, b2_r, b2_l], (1, 1, 1) if i % 2 == 0 else (1, 0, 0))
                 )
         self.track = track
+        self.track_pack = {'noises':noises, 'rads':rads}
         return True
 
-    def reset(self):
+    def reset(self, track=None):
         self._destroy()
         self.reward = 0.0
         self.prev_reward = 0.0
         self.tile_visited_count = 0
         self.t = 0.0
         self.road_poly = []
-
-        while True:
-            success = self._create_track()
-            if success:
-                break
+        if track is None:
+            while True:
+                success = self._create_track()
+                if success:
+                    break
+        else:
+            self._create_track(track['noises'], track['rads'])
         self.car = Car(self.world, *self.track[0][1:4])
 
         return self.step(None)[0]
@@ -658,9 +669,20 @@ class CarRacing(gym.Env, EzPickle):
         )
         vl.draw(gl.GL_QUADS)
         vl.delete()
-        self.score_label.text = "%04i" % np.linalg.norm(self.car.hull.angularVelocity)
+        self.score_label.text = "%04i" % self.reward
         self.score_label.draw()
-
+    def create_tournament(self, networks, grp_size=5,):
+        groups = []
+        group = {'players': []}
+        for i in range(len(networks)):
+            if i % grp_size == 0 and i > 0:
+                self.reset()
+                group['track'] = self.track_pack
+                group['best_player'] = None
+                groups.append(group)
+                group = {'players': []}
+            group['players'].append(deepcopy(networks[i]))
+        return groups
 
 
 def P_controller(speed, offset, body_angle, curve_steepness):
@@ -681,6 +703,7 @@ def NN_controller(output):
         a[2] = -throttle
     a[0] = output[0]
     return a
+
 
 p_control = False
 MIN_SPEED = 0.1
@@ -719,34 +742,49 @@ if __name__ == "__main__":
     env.viewer.window.on_key_press = key_press
     env.viewer.window.on_key_release = key_release
     isopen = True
-    genSize = 10
-    networks = []
-    for i in range(genSize):
-        networks.append(NN.NeuralNetwork(4, [8, 8], 2))
-    alpha = NN.NeuralNetwork(4, [8, 8], 2)
 
     #keras test
-    trainer = np.load('C:\\Users\\miikk\\Documents\\networks.npy', allow_pickle=True)[7]
+    '''trainer = np.load('C:\\Users\\miikk\\Documents\\networks2.npy', allow_pickle=True)[7]
     train_x, train_y = NN.create_training_set(5000, trainer)
     from tensorflow.keras import Sequential, layers, losses
     model = Sequential()
     model.add(layers.Dense(8, input_dim=4, activation='sigmoid'))
-    model.add(layers.Dense(8, activation='sigmoid'))
     model.add(layers.Dense(2))
     model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
-    model.fit(train_x, train_y, epochs=60)
+    model.fit(train_x, train_y, epochs=5)
     weights = model.get_weights()
-    hybrid = NN.NeuralNetwork(4, [8, 8], 2)
-    hybrid.keras_weightswap(weights)
+    hybrid = NN.NeuralNetwork(4, [8], 2)
+    hybrid.keras_weightswap(weights)'''
     #----
 
-    current_network = networks[0]
+    networks = np.load('C:\\Users\\miikk\\Documents\\networks2.npy', allow_pickle=True)
+    genSize = 300
+
+    tournament = True
+    #tournament
+    if tournament:
+        groups = env.create_tournament(networks, 5)
+        group_set = 0
+        player = 0
+        group = groups[group_set]
+        current_network = group['players'][player]
+        group['best_player'] = (player, 0, current_network)
+    else:
+        networks = []
+        for i in range(genSize):
+            current_network = deepcopy(hybrid)
+            current_network.mutate(MutationChance, MutationStrength)
+            networks.append(current_network)
+    #current_network = networks[0]
     rounds = 0
     gen = 1
     avgs = []
     while isopen:
-        env.reset()
-        
+        if tournament:
+            print('group: ', group_set, ', player: ', player, ', to beat: nr', group['best_player'][0], '@', group['best_player'][1])
+            env.reset(group['track'])
+        else:
+            env.reset()
         total_reward = 0.0
         steps = 0
         restart = False
@@ -761,9 +799,9 @@ if __name__ == "__main__":
             if p_control:
                 a = P_controller(*inputs)
             else:
-                #output = current_network.forward_propagate(inputs)
+                output = current_network.forward_propagate(inputs)
                 #output = model(np.array([np.array(inputs)]), training=False)[0]
-                output = hybrid.forward_propagate(inputs)
+                #output = hybrid.forward_propagate(inputs)
                 a = NN_controller(output)
 
             s, r, done, info = env.step(a)
@@ -771,9 +809,21 @@ if __name__ == "__main__":
             if done:
                 current_network.fitness = total_reward
                 avgs.append(total_reward)
-                current_network = networks[rounds]
+                if tournament:
+                    if total_reward > group['best_player'][1]:
+                        group['best_player'] = (player, total_reward, current_network)
+                    current_network = group['players'][player]
+                    player += 1
+                    if player == len(group['players']):
+                        player = 0
+                        group_set += 1
+                        group = groups[group_set]
+                        current_network = group['players'][player]
+                        group['best_player'] = (player, 0, current_network)
+                else:
+                    current_network = networks[rounds]
                 rounds += 1
-                if rounds % 5 == 0 and rounds >= 5:
+                if rounds % 5 == 0 and rounds >= 5 and not tournament:
                     avgfit = np.array(avgs).mean()
                     avgs = []
                     print("avg reward {:+0.2f}, mutation: ({:0.1f}, {:0.1f}), genSize: {}, generation: {}, round: {}".format(
