@@ -367,9 +367,10 @@ class CarRacing(gym.Env, EzPickle):
         self.tile_visited_count = 0
         self.t = 0.0
         self.road_poly = []
+        self.track_pack = None
         if track is None:
             while True:
-                success = self._create_track()
+                success = self._create_track([], [])
                 if success:
                     break
         else:
@@ -671,17 +672,20 @@ class CarRacing(gym.Env, EzPickle):
         vl.delete()
         self.score_label.text = "%04i" % self.reward
         self.score_label.draw()
-    def create_tournament(self, networks, grp_size=5,):
+    def create_tournament(self, networks, grp_size=5):
         groups = []
         group = {'players': []}
         for i in range(len(networks)):
-            if i % grp_size == 0 and i > 0:
+            group['players'].append(deepcopy(networks[i]))
+            if len(group['players']) == grp_size:
+                self.track_pack = None
                 self.reset()
                 group['track'] = self.track_pack
+                print(self.track_pack['noises'][10])
                 group['best_player'] = None
                 groups.append(group)
                 group = {'players': []}
-            group['players'].append(deepcopy(networks[i]))
+            
         return groups
 
 
@@ -743,7 +747,7 @@ if __name__ == "__main__":
     env.viewer.window.on_key_release = key_release
     isopen = True
 
-    #keras test
+    #keras trainer
     '''trainer = np.load('C:\\Users\\miikk\\Documents\\networks2.npy', allow_pickle=True)[7]
     train_x, train_y = NN.create_training_set(5000, trainer)
     from tensorflow.keras import Sequential, layers, losses
@@ -752,9 +756,9 @@ if __name__ == "__main__":
     model.add(layers.Dense(2))
     model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
     model.fit(train_x, train_y, epochs=5)
-    weights = model.get_weights()
+    weights = model.get_weights()'''
     hybrid = NN.NeuralNetwork(4, [8], 2)
-    hybrid.keras_weightswap(weights)'''
+    #hybrid.keras_weightswap(weights)
     #----
 
     networks = np.load('C:\\Users\\miikk\\Documents\\networks2.npy', allow_pickle=True)
@@ -769,13 +773,15 @@ if __name__ == "__main__":
         group = groups[group_set]
         current_network = group['players'][player]
         group['best_player'] = (player, 0, current_network)
+        winners = []
+        finalists = []
     else:
         networks = []
         for i in range(genSize):
             current_network = deepcopy(hybrid)
             current_network.mutate(MutationChance, MutationStrength)
             networks.append(current_network)
-    #current_network = networks[0]
+        current_network = networks[0]
     rounds = 0
     gen = 1
     avgs = []
@@ -815,9 +821,22 @@ if __name__ == "__main__":
                     current_network = group['players'][player]
                     player += 1
                     if player == len(group['players']):
+                        winners.append(group['best_player'])
                         player = 0
                         group_set += 1
-                        group = groups[group_set]
+                        if group_set < len(groups):
+                            group = groups[group_set]
+                        else:
+                            print("Final!")
+                            winners = np.array(winners)
+                            #sort winners by total reward and take the best networks
+                            places = 6
+                            finalists = winners[winners[:,1].argsort()][-places:]
+                            print('selected: ', finalists[:, 1])
+                            networks = finalists[:, 2]
+                            groups = env.create_tournament(networks, grp_size=len(finalists))
+                            group_set = 0
+                            group = groups[group_set]
                         current_network = group['players'][player]
                         group['best_player'] = (player, 0, current_network)
                 else:
@@ -830,9 +849,7 @@ if __name__ == "__main__":
                         avgfit, MutationChance, MutationStrength, genSize, gen, rounds)
                         )
                 
-                
-
-            if rounds >= genSize:
+            if rounds >= genSize and not tournament:
                 pool = []
                 for i in range(len(networks)):
                     pool_size = int(networks[i].fitness)
@@ -856,17 +873,3 @@ if __name__ == "__main__":
                 break
     env.close()
 
-
-
-'''
-test = [0.5444, 0.33333, -0.222, 0.4444]
-import time
-start = time.time()
-for i in range(1000):
-    alpha.forward_propagate(test)
-print("oma: ", time.time()-start)
-start = time.time()
-for i in range(1000):
-    model.predict(np.array([np.array(tesd)]), batch_size=1)
-print("Keras: ", time.time()-start)
-'''

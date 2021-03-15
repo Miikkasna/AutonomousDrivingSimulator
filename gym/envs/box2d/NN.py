@@ -58,7 +58,7 @@ class NeuralNetwork():
             for node in range(nodes):
                 for w in range(prev_nodes - 1):
                     self.network[layer][node]['weights'][w] = weights[2*layer][:, node][w]
-                self.network[layer][node]['weights'][-1] = weights[2*layer + 1][node]
+                self.network[layer][node]['weights'][-1] = weights[2*layer + 1][node] #bias
             prev_nodes = nodes
 def create_training_set(setSize, trainer):
     train_x = []
