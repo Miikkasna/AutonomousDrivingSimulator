@@ -60,11 +60,16 @@ class NeuralNetwork():
                     self.network[layer][node]['weights'][w] = weights[2*layer][:, node][w]
                 self.network[layer][node]['weights'][-1] = weights[2*layer + 1][node] #bias
             prev_nodes = nodes
-def create_training_set(setSize, trainer):
+def create_training_set(setSize, trainer, target_inputs):
     train_x = []
     train_y = []
+    trainer_inputs = trainer.size[0]
+    extra_inputs = target_inputs - trainer_inputs
+    assert extra_inputs >= 0, "Implement reduced inputs training here"
     for i in range(setSize):
-        train_x.append(2*np.random.rand(trainer.size[0])-1)
+        train_x.append(2*np.random.rand(target_inputs)-1)
+        for ii in range(extra_inputs): #set extra inputs to zero
+            train_x[i][-(ii+1)] = 0
         train_x[i][0] = abs(train_x[i][0]) #speed input
         train_y.append(trainer.forward_propagate(train_x[i]))
     return np.array(train_x), np.array(train_y)

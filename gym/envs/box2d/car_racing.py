@@ -75,9 +75,8 @@ ROAD_COLOR = [0.4, 0.4, 0.4]
 FRICTION = 0.4
 MAX_ANGLE = 90
 MAX_SPEED = 50 #tested
-FUTURE_SIGHT = 15
-p_control = True
-NN_control = False
+FUTURE_SIGHT = 12
+
 
 class FrictionDetector(contactListener):
     def __init__(self, env):
@@ -428,11 +427,26 @@ class CarRacing(gym.Env, EzPickle):
         self.car.angle = self.calcAngle(p1, p2, p3, p4)/MAX_ANGLE
         p3 = p2
         if (self.car.curren_tile + FUTURE_SIGHT) < len(self.road):
-            p4 = self.road[self.car.curren_tile + FUTURE_SIGHT].center_p
+            p4 = self.road[self.car.curren_tile + int(FUTURE_SIGHT/2)].center_p
+            p5 = self.road[self.car.curren_tile + int(FUTURE_SIGHT/2)].center_p
+            p6 = self.road[self.car.curren_tile + FUTURE_SIGHT].center_p
         else:
             p4 = self.road[-1].center_p
-        self.car.curve_steepness = self.calcAngle(p1, p2, p3, p4)/MAX_ANGLE
+            p5 = p3
+            p6 = p4
+        self.car.curve1 = self.calcAngle(p1, p2, p3, p4)/MAX_ANGLE
+        self.car.curve2 = self.calcAngle(p1, p2, p5, p6)/MAX_ANGLE
+        self.car.slip_rate = self.calcSlipRate()
 
+    def calcSlipRate(self):
+        f_speed = (self.car.wheels[0].omega + self.car.wheels[1].omega)/2
+        r_speed = (self.car.wheels[2].omega + self.car.wheels[3].omega)/2
+        if r_speed > f_speed:
+            traction = f_speed/r_speed
+            slip = 1-traction
+            return slip
+        else:
+            return 0
 
     def calcOffset(self, p1, p2, p3): #normalized with tack width
         p1 = np.array(p1)
@@ -480,7 +494,7 @@ class CarRacing(gym.Env, EzPickle):
             return  # reset() not called yet
 
         # Animate zoom first second:
-        zoom = SCALE#0.1 * SCALE * max(1 - self.t, 0) + ZOOM * SCALE * min(self.t, 1)
+        zoom = 0.1 * SCALE * max(1 - self.t, 0) + ZOOM * SCALE * min(self.t, 1)
         scroll_x = self.car.hull.position[0]
         scroll_y = self.car.hull.position[1]
         angle = -self.car.hull.angle
@@ -505,11 +519,15 @@ class CarRacing(gym.Env, EzPickle):
         #curve forecast
         p3 = p2
         if (self.car.curren_tile + FUTURE_SIGHT) < len(self.road):
-            p4 = self.road[self.car.curren_tile + FUTURE_SIGHT].center_p
+            p4 = self.road[self.car.curren_tile + int(FUTURE_SIGHT/2)].center_p
+            p5 = self.road[self.car.curren_tile + int(FUTURE_SIGHT/2)].center_p
+            p6 = self.road[self.car.curren_tile + FUTURE_SIGHT].center_p
         else:
             p4 = self.road[-1].center_p
+            p5 = p3
+            p6 = p4
         self.debug_line(p3, p4, color=(50, 50, 0))
-
+        self.debug_line(p5, p6, color=(0, 100, 50))
         arr = None
         win = self.viewer.window
         win.switch_to()
@@ -670,7 +688,7 @@ class CarRacing(gym.Env, EzPickle):
         )
         vl.draw(gl.GL_QUADS)
         vl.delete()
-        self.score_label.text = "%04i" % self.reward
+        self.score_label.text = "%04i" % (self.car.slip_rate*100)
         self.score_label.draw()
     def create_tournament(self, networks, grp_size=5):
         groups = []
@@ -689,9 +707,9 @@ class CarRacing(gym.Env, EzPickle):
         return groups
 
 
-def P_controller(speed, offset, body_angle, curve_steepness):
+def P_controller(speed, offset, body_angle, curve, slip):
     a = np.array([0.0, 0.0, 0.0])
-    throttle = 0.5 - 2*speed*abs(curve_steepness)
+    throttle = 0.5 - 2*speed*abs(curve)
     if throttle > 0:
         a[1] = throttle
     else:
@@ -715,8 +733,8 @@ if __name__ == "__main__":
     from pyglet.window import key
 
     a = np.array([0.0, 0.0, 0.0])
-    MutationChance = 0.6
-    MutationStrength = 0.6
+    MutationChance = 0.4
+    MutationStrength = 0.4
     show = True
     def key_press(k, mod):
         global restart
@@ -748,23 +766,24 @@ if __name__ == "__main__":
     isopen = True
 
     #keras trainer
-    '''trainer = np.load('C:\\Users\\miikk\\Documents\\networks2.npy', allow_pickle=True)[7]
-    train_x, train_y = NN.create_training_set(5000, trainer)
+    '''trainer = np.load('C:\\Users\\miikk\\Documents\\networks2.npy', allow_pickle=True)[0]
+    train_x, train_y = NN.create_training_set(5000, trainer, trainer.size[0]+1)
     from tensorflow.keras import Sequential, layers, losses
     model = Sequential()
-    model.add(layers.Dense(8, input_dim=4, activation='sigmoid'))
+    model.add(layers.Dense(8, input_dim=5, activation='sigmoid'))
     model.add(layers.Dense(2))
     model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
-    model.fit(train_x, train_y, epochs=5)
-    weights = model.get_weights()'''
-    hybrid = NN.NeuralNetwork(4, [8], 2)
-    #hybrid.keras_weightswap(weights)
+    model.fit(train_x, train_y, epochs=20)
+    weights = model.get_weights()
+    hybrid = NN.NeuralNetwork(5, [8], 2)
+    hybrid.keras_weightswap(weights)'''
     #----
 
     networks = np.load('C:\\Users\\miikk\\Documents\\networks2.npy', allow_pickle=True)
-    genSize = 300
+    #hybrid = networks[0]
+    genSize = 40
 
-    tournament = True
+    tournament = False
     #tournament
     if tournament:
         groups = env.create_tournament(networks, 5)
@@ -776,11 +795,11 @@ if __name__ == "__main__":
         winners = []
         finalists = []
     else:
-        networks = []
+        '''networks = []
         for i in range(genSize):
             current_network = deepcopy(hybrid)
             current_network.mutate(MutationChance, MutationStrength)
-            networks.append(current_network)
+            networks.append(current_network)'''
         current_network = networks[0]
     rounds = 0
     gen = 1
@@ -795,11 +814,13 @@ if __name__ == "__main__":
         steps = 0
         restart = False
         while True:
+            #input("step") #frame by frame debug
             speed = np.linalg.norm(env.car.hull.linearVelocity)/MAX_SPEED
             offset = env.car.offset
             body_angle = env.car.angle
-            curve_steepness = env.car.curve_steepness
-            inputs = (speed, offset, body_angle, curve_steepness)
+            curve1 = env.car.curve1
+            slip = env.car.slip_rate
+            inputs = (speed, offset, body_angle, curve1, slip)
 
 
             if p_control:

@@ -71,7 +71,9 @@ class Car:
         self.curren_tile = None
         self.offset = 0
         self.angle = 0
-        self.curve_steepness = 0
+        self.curve1 = 0
+        self.curve2 = 0
+        self.slip_rate = 0
         self.current_network = None
         mu, sigma = 1, 0.2 # mean and standard deviation
         self.gaussianFriction = np.random.normal(mu, sigma, 1000)
