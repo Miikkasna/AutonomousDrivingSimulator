@@ -76,7 +76,7 @@ FRICTION = 0.4
 MAX_ANGLE = 90
 MAX_SPEED = 50 #tested
 FUTURE_SIGHT = 12
-
+TIMEPENALTY = 0.5
 
 class FrictionDetector(contactListener):
     def __init__(self, env):
@@ -394,7 +394,7 @@ class CarRacing(gym.Env, EzPickle):
         step_reward = 0
         done = False
         if action is not None:  # First step without action, called from reset()
-            self.reward -= 0.1
+            self.reward -= TIMEPENALTY
             # We actually don't want to count fuel spent, we want car to be faster.
             # self.reward -=  10 * self.car.fuel_spent / ENGINE_POWER
             self.car.fuel_spent = 0.0
@@ -688,7 +688,7 @@ class CarRacing(gym.Env, EzPickle):
         )
         vl.draw(gl.GL_QUADS)
         vl.delete()
-        self.score_label.text = "%04i" % (self.car.slip_rate*100)
+        self.score_label.text = "%04i" % self.reward
         self.score_label.draw()
     def create_tournament(self, networks, grp_size=5):
         groups = []
@@ -733,8 +733,8 @@ if __name__ == "__main__":
     from pyglet.window import key
 
     a = np.array([0.0, 0.0, 0.0])
-    MutationChance = 0.4
-    MutationStrength = 0.4
+    MutationChance = 0.6
+    MutationStrength = 0.5
     show = True
     def key_press(k, mod):
         global restart
@@ -766,22 +766,23 @@ if __name__ == "__main__":
     isopen = True
 
     #keras trainer
-    '''trainer = np.load('C:\\Users\\miikk\\Documents\\networks2.npy', allow_pickle=True)[0]
-    train_x, train_y = NN.create_training_set(5000, trainer, trainer.size[0]+1)
+    '''trainer = np.load('C:\\Users\\miikk\\Documents\\timeopt.npy', allow_pickle=True)[50]
+    train_x, train_y = NN.create_training_set(5000, trainer, 6)
     from tensorflow.keras import Sequential, layers, losses
     model = Sequential()
-    model.add(layers.Dense(8, input_dim=5, activation='sigmoid'))
+    model.add(layers.Dense(16, input_dim=6, activation='sigmoid'))
+    model.add(layers.Dense(16))
     model.add(layers.Dense(2))
     model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
     model.fit(train_x, train_y, epochs=20)
     weights = model.get_weights()
-    hybrid = NN.NeuralNetwork(5, [8], 2)
+    hybrid = NN.NeuralNetwork(6, [16, 16], 2)
     hybrid.keras_weightswap(weights)'''
     #----
 
-    networks = np.load('C:\\Users\\miikk\\Documents\\networks2.npy', allow_pickle=True)
-    #hybrid = networks[0]
-    genSize = 40
+    old_networks = np.load('C:\\Users\\miikk\\Documents\\deep6trained.npy', allow_pickle=True)
+    hybrid = old_networks[39] #39
+    genSize = 150
 
     tournament = False
     #tournament
@@ -795,11 +796,11 @@ if __name__ == "__main__":
         winners = []
         finalists = []
     else:
-        '''networks = []
+        networks = []
         for i in range(genSize):
-            current_network = deepcopy(hybrid)
-            current_network.mutate(MutationChance, MutationStrength)
-            networks.append(current_network)'''
+            current_network = deepcopy(hybrid)#np.random.choice(old_networks))
+            #current_network.mutate(MutationChance, MutationStrength)
+            networks.append(current_network)
         current_network = networks[0]
     rounds = 0
     gen = 1
@@ -819,11 +820,13 @@ if __name__ == "__main__":
             offset = env.car.offset
             body_angle = env.car.angle
             curve1 = env.car.curve1
+            curve2 = env.car.curve2
             slip = env.car.slip_rate
-            inputs = (speed, offset, body_angle, curve1, slip)
+            inputs = (speed, offset, body_angle, curve1, curve2, slip)
 
 
             if p_control:
+
                 a = P_controller(*inputs)
             else:
                 output = current_network.forward_propagate(inputs)

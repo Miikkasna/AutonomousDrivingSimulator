@@ -1,6 +1,7 @@
 import numpy as np
 import random
 
-trainer = np.load('C:\\Users\\miikk\\Documents\\networks2.npy', allow_pickle=True)
+stuff = np.load('C:\\Users\\miikk\\Documents\\deep6trained.npy', allow_pickle=True)
 
-print(trainer.shape)
+for i in range(stuff.shape[0]):
+    print(i, stuff[i].fitness)
