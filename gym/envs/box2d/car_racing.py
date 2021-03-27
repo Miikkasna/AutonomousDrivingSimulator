@@ -72,7 +72,7 @@ BORDER_MIN_COUNT = 4
 
 ROAD_COLOR = [0.4, 0.4, 0.4]
 
-FRICTION = 0.4
+FRICTION = 0.2#0.4
 MAX_ANGLE = 90
 MAX_SPEED = 50 #tested
 FUTURE_SIGHT = 12
@@ -707,14 +707,14 @@ class CarRacing(gym.Env, EzPickle):
         return groups
 
 
-def P_controller(speed, offset, body_angle, curve, slip):
+def P_controller(inputs):
     a = np.array([0.0, 0.0, 0.0])
-    throttle = 0.5 - 2*speed*abs(curve)
+    throttle = 0.5 - 2*speed*abs(inputs[3])
     if throttle > 0:
         a[1] = throttle
     else:
         a[2] = -throttle
-    a[0] = offset + body_angle
+    a[0] = inputs[1] + inputs[2]
     return a
 def NN_controller(output):
     a = np.array([0.0, 0.0, 0.0])
@@ -779,15 +779,15 @@ if __name__ == "__main__":
     hybrid = NN.NeuralNetwork(6, [16, 16], 2)
     hybrid.keras_weightswap(weights)'''
     #----
-
-    old_networks = np.load('C:\\Users\\miikk\\Documents\\deep6trained.npy', allow_pickle=True)
-    hybrid = old_networks[39] #39
+    #deep6trained.npy top10 = [57, 58, 39, 4, 90, 79, 97, 89, 72, 80]
+    old_networks = np.load('C:\\Users\\miikk\\Documents\\deep6trained.npy', allow_pickle=True)[[57, 58, 39, 4, 90, 79, 97, 89, 72, 80]]
+    hybrid = old_networks[0] #39 #79 steady
     genSize = 150
 
     tournament = False
     #tournament
     if tournament:
-        groups = env.create_tournament(networks, 5)
+        groups = env.create_tournament(old_networks, 5)
         group_set = 0
         player = 0
         group = groups[group_set]
@@ -801,6 +801,7 @@ if __name__ == "__main__":
             current_network = deepcopy(hybrid)#np.random.choice(old_networks))
             #current_network.mutate(MutationChance, MutationStrength)
             networks.append(current_network)
+        networks = old_networks
         current_network = networks[0]
     rounds = 0
     gen = 1
@@ -827,7 +828,7 @@ if __name__ == "__main__":
 
             if p_control:
 
-                a = P_controller(*inputs)
+                a = P_controller(inputs)
             else:
                 output = current_network.forward_propagate(inputs)
                 #output = model(np.array([np.array(inputs)]), training=False)[0]
