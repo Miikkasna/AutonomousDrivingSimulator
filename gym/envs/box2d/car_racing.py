@@ -45,7 +45,7 @@ from car_dynamics import Car
 from gym.utils import seeding, EzPickle
 from copy import deepcopy
 import pyglet, random
-
+import matplotlib.pyplot as plt
 pyglet.options["debug_gl"] = False
 from pyglet import gl
 import NN
@@ -72,9 +72,9 @@ BORDER_MIN_COUNT = 4
 
 ROAD_COLOR = [0.4, 0.4, 0.4]
 
-FRICTION = 0.2#0.4
-MAX_ANGLE = 90
-MAX_SPEED = 50 #tested
+FRICTION = 0.3#0.4
+MAX_ANGLE = 90.0
+MAX_SPEED = 50.0 #tested
 FUTURE_SIGHT = 12
 TIMEPENALTY = 0.5
 
@@ -138,6 +138,11 @@ class CarRacing(gym.Env, EzPickle):
         self.reward = 0.0
         self.prev_reward = 0.0
         self.verbose = verbose
+        gaussian = np.random.normal(FRICTION, 0.2, 1000)
+        self.friction_values = gaussian[(gaussian > 0.1) & (gaussian < 1.0)]
+        self.friction_change = random.randrange(5, 15)/10.0
+        #plt.hist(self.friction_values, 10)
+        #plt.show()
         self.fd_tile = fixtureDef(
             shape=polygonShape(vertices=[(0, 0), (1, 0), (1, -1), (0, -1)])
         )
@@ -330,7 +335,8 @@ class CarRacing(gym.Env, EzPickle):
             c = 0.01 * (i % 3)
             t.color = [ROAD_COLOR[0] + c, ROAD_COLOR[1] + c, ROAD_COLOR[2] + c]
             t.road_visited = False
-            t.road_friction = FRICTION
+            if i % 10 == 0: self.friction_change = random.randrange(5, 15)/10.0
+            t.road_friction = np.random.choice(self.friction_values)*self.friction_change
             t.fixtures[0].sensor = True
             self.road_poly.append(([road1_l, road1_r, road2_r, road2_l], t.color))
             self.road.append(t)
@@ -437,6 +443,8 @@ class CarRacing(gym.Env, EzPickle):
         self.car.curve1 = self.calcAngle(p1, p2, p3, p4)/MAX_ANGLE
         self.car.curve2 = self.calcAngle(p1, p2, p5, p6)/MAX_ANGLE
         self.car.slip_rate = self.calcSlipRate()
+        self.car.yaw_velocity = self.car.hull.angularVelocity/400.0 #tested
+        self.car.speed = np.linalg.norm(self.car.hull.linearVelocity)/MAX_SPEED
 
     def calcSlipRate(self):
         f_speed = (self.car.wheels[0].omega + self.car.wheels[1].omega)/2
@@ -766,22 +774,25 @@ if __name__ == "__main__":
     isopen = True
 
     #keras trainer
-    '''trainer = np.load('C:\\Users\\miikk\\Documents\\timeopt.npy', allow_pickle=True)[50]
-    train_x, train_y = NN.create_training_set(5000, trainer, 6)
+    '''
+    trainer = np.load('C:\\Users\\miikk\\Documents\\timeopt.npy', allow_pickle=True)[79]
+    train_x, train_y = NN.create_training_set(10000, trainer, 6+1)
     from tensorflow.keras import Sequential, layers, losses
     model = Sequential()
-    model.add(layers.Dense(16, input_dim=6, activation='sigmoid'))
+    model.add(layers.Dense(16, input_dim=7, activation='sigmoid'))
     model.add(layers.Dense(16))
     model.add(layers.Dense(2))
     model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
-    model.fit(train_x, train_y, epochs=20)
+    model.fit(train_x, train_y, epochs=30)
     weights = model.get_weights()
-    hybrid = NN.NeuralNetwork(6, [16, 16], 2)
+    hybrid = NN.NeuralNetwork(7, [16, 16], 2)
     hybrid.keras_weightswap(weights)'''
     #----
     #deep6trained.npy top10 = [57, 58, 39, 4, 90, 79, 97, 89, 72, 80]
-    old_networks = np.load('C:\\Users\\miikk\\Documents\\deep6trained.npy', allow_pickle=True)[[57, 58, 39, 4, 90, 79, 97, 89, 72, 80]]
-    hybrid = old_networks[0] #39 #79 steady
+    #deep7ultratrained.npy top10 =  [4,74,15,17,73,64,68,55,25,65]
+
+    old_networks = np.load('C:\\Users\\miikk\\Documents\\deep7ultratrained.npy', allow_pickle=True)[[4,74,15,17,73,64,68,55,25,65]]
+    #hybrid = old_networks[0] #39 #79 steady
     genSize = 150
 
     tournament = False
@@ -798,10 +809,9 @@ if __name__ == "__main__":
     else:
         networks = []
         for i in range(genSize):
-            current_network = deepcopy(hybrid)#np.random.choice(old_networks))
+            current_network = np.random.choice(old_networks)
             #current_network.mutate(MutationChance, MutationStrength)
             networks.append(current_network)
-        networks = old_networks
         current_network = networks[0]
     rounds = 0
     gen = 1
@@ -817,14 +827,14 @@ if __name__ == "__main__":
         restart = False
         while True:
             #input("step") #frame by frame debug
-            speed = np.linalg.norm(env.car.hull.linearVelocity)/MAX_SPEED
+            speed = env.car.speed
             offset = env.car.offset
             body_angle = env.car.angle
             curve1 = env.car.curve1
             curve2 = env.car.curve2
             slip = env.car.slip_rate
-            inputs = (speed, offset, body_angle, curve1, curve2, slip)
-
+            yaw = env.car.yaw_velocity
+            inputs = (speed, offset, body_angle, curve1, curve2, slip, yaw)
 
             if p_control:
 

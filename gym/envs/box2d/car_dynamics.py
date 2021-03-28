@@ -16,9 +16,8 @@ import NN
 
 SIZE = 0.02
 ENGINE_POWER = 100000000*SIZE*SIZE/2
-WHEEL_MOMENT_OF_INERTIA = 4000*SIZE*SIZE/2
+WHEEL_MOMENT_OF_INERTIA = 4000*SIZE*SIZE/4
 FRICTION_LIMIT = 1000000*SIZE*SIZE # friction ~= mass ~= size^2 (calculated implicitly using density)
-print(FRICTION_LIMIT)
 WHEEL_R = 27
 WHEEL_W = 14
 WHEELPOS = [
@@ -69,14 +68,14 @@ class Car:
         self.wheels = []
         self.fuel_spent = 0.0
         self.curren_tile = None
+        self.speed = 0
         self.offset = 0
         self.angle = 0
         self.curve1 = 0
         self.curve2 = 0
         self.slip_rate = 0
+        self.yaw_velocity = 0
         self.current_network = None
-        mu, sigma = 1, 0.2 # mean and standard deviation
-        self.gaussianFriction = np.random.normal(mu, sigma, 1000)
         WHEEL_POLY = [
             (-WHEEL_W, +WHEEL_R), (+WHEEL_W, +WHEEL_R),
             (+WHEEL_W, -WHEEL_R), (-WHEEL_W, -WHEEL_R)
@@ -161,9 +160,6 @@ class Car:
             friction_limit = FRICTION_LIMIT*0.4  # Grass friction if no tile
             for tile in w.tiles:
                 friction_limit = FRICTION_LIMIT*tile.road_friction
-                gaus = random.choice(self.gaussianFriction)
-                if gaus > 0.5 and gaus < 1.5:
-                    friction_limit *= gaus
                 grass = False
 
             # Force

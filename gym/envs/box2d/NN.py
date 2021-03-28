@@ -75,16 +75,3 @@ def create_training_set(setSize, trainer, target_inputs):
     return np.array(train_x), np.array(train_y)
 
 
-'''
-from tensorflow.keras import Sequential, layers, losses
-model = Sequential()
-
-model.add(layers.Dense(8, input_dim=4, activation='sigmoid'))
-model.add(layers.Dense(8, activation='sigmoid'))
-model.add(layers.Dense(2))
-model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
-NN = NeuralNetwork(4, [8, 8], 2)
-weights = model.get_weights()
-print(weights)
-NN.copy_keras_weights(weights)
-'''
