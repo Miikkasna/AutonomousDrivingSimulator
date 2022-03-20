@@ -72,11 +72,11 @@ BORDER_MIN_COUNT = 4
 
 ROAD_COLOR = [0.4, 0.4, 0.4]
 
-FRICTION = 0.3#0.4
+FRICTION = 1.5#0.4
 MAX_ANGLE = 90.0
 MAX_SPEED = 50.0 #tested
 FUTURE_SIGHT = 12
-TIMEPENALTY = 0.5
+TIMEPENALTY = 0.45
 
 class FrictionDetector(contactListener):
     def __init__(self, env):
@@ -401,6 +401,8 @@ class CarRacing(gym.Env, EzPickle):
         done = False
         if action is not None:  # First step without action, called from reset()
             self.reward -= TIMEPENALTY
+            if self.car.drifting:
+                self.reward += 0#1
             # We actually don't want to count fuel spent, we want car to be faster.
             # self.reward -=  10 * self.car.fuel_spent / ENGINE_POWER
             self.car.fuel_spent = 0.0
@@ -419,9 +421,9 @@ class CarRacing(gym.Env, EzPickle):
             elif speed < MIN_SPEED:
                 if self.tile_visited_count > 4:
                     done = True #too slow
+            #drift reward
 
         return self.state, step_reward, done, {}
-
 
     def calcInputs(self):
         #calculate stuff
@@ -580,7 +582,6 @@ class CarRacing(gym.Env, EzPickle):
 
         return arr
 
-
     def close(self):
         if self.viewer is not None:
             self.viewer.close()
@@ -698,6 +699,7 @@ class CarRacing(gym.Env, EzPickle):
         vl.delete()
         self.score_label.text = "%04i" % self.reward
         self.score_label.draw()
+        
     def create_tournament(self, networks, grp_size=5):
         groups = []
         group = {'players': []}
@@ -741,8 +743,8 @@ if __name__ == "__main__":
     from pyglet.window import key
 
     a = np.array([0.0, 0.0, 0.0])
-    MutationChance = 0.6
-    MutationStrength = 0.5
+    MutationChance = 0.5
+    MutationStrength = 0.4
     show = True
     def key_press(k, mod):
         global restart
@@ -791,37 +793,21 @@ if __name__ == "__main__":
     #deep6trained.npy top10 = [57, 58, 39, 4, 90, 79, 97, 89, 72, 80]
     #deep7ultratrained.npy top10 =  [4,74,15,17,73,64,68,55,25,65]
 
-    old_networks = np.load('C:\\Users\\miikk\\Documents\\deep7ultratrained.npy', allow_pickle=True)[[4,74,15,17,73,64,68,55,25,65]]
+    old_networks = np.load('C:\\Users\\miikk\\Documents\\VSC\\CarSimulation\\highfriction.npy', allow_pickle=True)#[[4,74,15,17,73,64,68,55,25,65]]C:\\Users\\miikk\\Documents\\deep7ultratrained.npy
     #hybrid = old_networks[0] #39 #79 steady
-    genSize = 150
+    genSize = 80
 
-    tournament = False
-    #tournament
-    if tournament:
-        groups = env.create_tournament(old_networks, 5)
-        group_set = 0
-        player = 0
-        group = groups[group_set]
-        current_network = group['players'][player]
-        group['best_player'] = (player, 0, current_network)
-        winners = []
-        finalists = []
-    else:
-        networks = []
-        for i in range(genSize):
-            current_network = np.random.choice(old_networks)
-            #current_network.mutate(MutationChance, MutationStrength)
-            networks.append(current_network)
-        current_network = networks[0]
+    networks = []
+    for i in range(genSize):
+        current_network = np.random.choice(old_networks)
+        current_network.mutate(MutationChance, MutationStrength)
+        networks.append(current_network)
+    current_network = networks[0]
     rounds = 0
     gen = 1
     avgs = []
     while isopen:
-        if tournament:
-            print('group: ', group_set, ', player: ', player, ', to beat: nr', group['best_player'][0], '@', group['best_player'][1])
-            env.reset(group['track'])
-        else:
-            env.reset()
+        env.reset()
         total_reward = 0.0
         steps = 0
         restart = False
@@ -850,41 +836,16 @@ if __name__ == "__main__":
             if done:
                 current_network.fitness = total_reward
                 avgs.append(total_reward)
-                if tournament:
-                    if total_reward > group['best_player'][1]:
-                        group['best_player'] = (player, total_reward, current_network)
-                    current_network = group['players'][player]
-                    player += 1
-                    if player == len(group['players']):
-                        winners.append(group['best_player'])
-                        player = 0
-                        group_set += 1
-                        if group_set < len(groups):
-                            group = groups[group_set]
-                        else:
-                            print("Final!")
-                            winners = np.array(winners)
-                            #sort winners by total reward and take the best networks
-                            places = 6
-                            finalists = winners[winners[:,1].argsort()][-places:]
-                            print('selected: ', finalists[:, 1])
-                            networks = finalists[:, 2]
-                            groups = env.create_tournament(networks, grp_size=len(finalists))
-                            group_set = 0
-                            group = groups[group_set]
-                        current_network = group['players'][player]
-                        group['best_player'] = (player, 0, current_network)
-                else:
-                    current_network = networks[rounds]
+                current_network = networks[rounds]
                 rounds += 1
-                if rounds % 5 == 0 and rounds >= 5 and not tournament:
+                if rounds % 5 == 0 and rounds >= 5:
                     avgfit = np.array(avgs).mean()
                     avgs = []
                     print("avg reward {:+0.2f}, mutation: ({:0.1f}, {:0.1f}), genSize: {}, generation: {}, round: {}".format(
                         avgfit, MutationChance, MutationStrength, genSize, gen, rounds)
                         )
                 
-            if rounds >= genSize and not tournament:
+            if rounds >= genSize:
                 pool = []
                 for i in range(len(networks)):
                     pool_size = int(networks[i].fitness)

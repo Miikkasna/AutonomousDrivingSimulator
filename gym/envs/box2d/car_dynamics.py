@@ -15,7 +15,7 @@ import random
 import NN
 
 SIZE = 0.02
-ENGINE_POWER = 100000000*SIZE*SIZE/2
+ENGINE_POWER = 0.5*100000000*SIZE*SIZE/2
 WHEEL_MOMENT_OF_INERTIA = 4000*SIZE*SIZE/4
 FRICTION_LIMIT = 1000000*SIZE*SIZE # friction ~= mass ~= size^2 (calculated implicitly using density)
 WHEEL_R = 27
@@ -75,6 +75,7 @@ class Car:
         self.curve2 = 0
         self.slip_rate = 0
         self.yaw_velocity = 0
+        self.drifting = False
         self.current_network = None
         WHEEL_POLY = [
             (-WHEEL_W, +WHEEL_R), (+WHEEL_W, +WHEEL_R),
@@ -137,7 +138,7 @@ class Car:
 
         Args:
             b (0..1): Degree to which the brakes are applied. More than 0.9 blocks the wheels to zero rotation"""
-        for w in self.wheels[2:4]: #brake only rear wheels
+        for w in self.wheels[:4]: #brake only rear wheels
             w.brake = b
 
     def steer(self, s):
@@ -199,6 +200,10 @@ class Car:
             p_force *= 205000*SIZE*SIZE
             force = np.sqrt(np.square(f_force) + np.square(p_force))
             # Skid trace
+            if abs(force) > 1.3*friction_limit:
+                self.drifting = True
+            else:
+                self.drifting = False
             if abs(force) > 2.0*friction_limit:
                 if w.skid_particle and w.skid_particle.grass == grass and len(w.skid_particle.poly) < 30:
                     w.skid_particle.poly.append( (w.position[0], w.position[1]) )

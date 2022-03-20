@@ -21,7 +21,7 @@ Neural network controller added
 
 Evolution strategy training added
 
-Track saving + tournament mode added
+Track saving added
 
 Possibility to add the number of network inputs, create training data for cloning networks, train with TensorFlow and swap trained weights to Car NN class added
 
