@@ -414,13 +414,15 @@ class CarRacing(gym.Env, EzPickle):
             if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
                 done = True
                 step_reward = -100
-            elif abs(self.car.offset) > 1:
-                done = True
-            elif abs(self.car.angle) > 1:
-                done = True
-            elif speed < MIN_SPEED:
+            if abs(self.car.offset) > 1:
+                self.reward -= 1
+            if abs(self.car.angle) == 1:
+                self.reward -= 1
+            if speed < MIN_SPEED:
                 if self.tile_visited_count > 4:
                     done = True #too slow
+            if self.reward < 0:
+                done = True
             #drift reward
 
         return self.state, step_reward, done, {}
@@ -433,6 +435,10 @@ class CarRacing(gym.Env, EzPickle):
         p3 = self.car.wheels[2].position
         p4 = self.car.wheels[0].position
         self.car.angle = self.calcAngle(p1, p2, p3, p4)/MAX_ANGLE
+        if self.car.angle > 1:
+            self.car.angle = 1
+        elif self.car.angle < -1:
+            self.car.angle = -1
         p3 = p2
         if (self.car.curren_tile + FUTURE_SIGHT) < len(self.road):
             p4 = self.road[self.car.curren_tile + int(FUTURE_SIGHT/2)].center_p
@@ -700,22 +706,6 @@ class CarRacing(gym.Env, EzPickle):
         self.score_label.text = "%04i" % self.reward
         self.score_label.draw()
         
-    def create_tournament(self, networks, grp_size=5):
-        groups = []
-        group = {'players': []}
-        for i in range(len(networks)):
-            group['players'].append(deepcopy(networks[i]))
-            if len(group['players']) == grp_size:
-                self.track_pack = None
-                self.reset()
-                group['track'] = self.track_pack
-                print(self.track_pack['noises'][10])
-                group['best_player'] = None
-                groups.append(group)
-                group = {'players': []}
-            
-        return groups
-
 
 def P_controller(inputs):
     a = np.array([0.0, 0.0, 0.0])
@@ -752,7 +742,8 @@ if __name__ == "__main__":
         global MutationStrength
         global genSize
         global show
-        if k == 0xFF0D:
+        if k == key.ENTER:
+            done = True
             restart = True
         if k == key.LEFT:
             MutationChance -= 0.1
