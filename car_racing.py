@@ -1,35 +1,3 @@
-"""
-Easiest continuous control task to learn from pixels, a top-down racing
-environment.
-Discrete control is reasonable in this environment as well, on/off
-discretization is fine.
-
-State consists of STATE_W x STATE_H pixels.
-
-The reward is -0.1 every frame and +1000/N for every track tile visited, where
-N is the total number of tiles visited in the track. For example, if you have
-finished in 732 frames, your reward is 1000 - 0.1*732 = 926.8 points.
-
-The game is solved when the agent consistently gets 900+ points. The generated
-track is random every episode.
-
-The episode finishes when all the tiles are visited. The car also can go
-outside of the PLAYFIELD -  that is far off the track, then it will get -100
-and die.
-
-Some indicators are shown at the bottom of the window along with the state RGB
-buffer. From left to right: the true speed, four ABS sensors, the steering
-wheel position and gyroscope.
-
-To play yourself (it's rather fast for humans), type:
-
-python gym/envs/box2d/car_racing.py
-
-Remember it's a powerful rear-wheel drive car -  don't press the accelerator
-and turn at the same time.
-
-Created by Oleg Klimov. Licensed on the same terms as the rest of OpenAI Gym.
-"""
 import sys
 import math
 import numpy as np
@@ -767,24 +735,12 @@ if __name__ == "__main__":
     isopen = True
 
     #keras trainer
-    '''
-    trainer = np.load('C:\\Users\\miikk\\Documents\\timeopt.npy', allow_pickle=True)[79]
-    train_x, train_y = NN.create_training_set(10000, trainer, 6+1)
-    from tensorflow.keras import Sequential, layers, losses
-    model = Sequential()
-    model.add(layers.Dense(16, input_dim=7, activation='sigmoid'))
-    model.add(layers.Dense(16))
-    model.add(layers.Dense(2))
-    model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
-    model.fit(train_x, train_y, epochs=30)
-    weights = model.get_weights()
-    hybrid = NN.NeuralNetwork(7, [16, 16], 2)
-    hybrid.keras_weightswap(weights)'''
+    #----
+    #copy from keras_trainer
     #----
     #deep6trained.npy top10 = [57, 58, 39, 4, 90, 79, 97, 89, 72, 80]
-    #deep7ultratrained.npy top10 =  [4,74,15,17,73,64,68,55,25,65]
 
-    old_networks = np.load('C:\\Users\\miikk\\Documents\\VSC\\CarSimulation\\highfriction.npy', allow_pickle=True)#[[4,74,15,17,73,64,68,55,25,65]]C:\\Users\\miikk\\Documents\\deep7ultratrained.npy
+    old_networks = np.load('C:\\Users\\miikk\\OneDrive\\Desktop\\VSC\\AutonomousDrivingSimulator\\deep6trained.npy', allow_pickle=True)#[[4,74,15,17,73,64,68,55,25,65]]C:\\Users\\miikk\\Documents\\deep7ultratrained.npy
     #hybrid = old_networks[0] #39 #79 steady
     genSize = 80
 
