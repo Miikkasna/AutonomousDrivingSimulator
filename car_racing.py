@@ -674,16 +674,6 @@ class CarRacing(gym.Env, EzPickle):
         self.score_label.text = "%04i" % self.reward
         self.score_label.draw()
         
-
-def P_controller(inputs):
-    a = np.array([0.0, 0.0, 0.0])
-    throttle = 0.5 - 2*speed*abs(inputs[3])
-    if throttle > 0:
-        a[1] = throttle
-    else:
-        a[2] = -throttle
-    a[0] = inputs[1] + inputs[2]
-    return a
 def NN_controller(output):
     a = np.array([0.0, 0.0, 0.0])
     throttle = output[1]
@@ -694,8 +684,6 @@ def NN_controller(output):
     a[0] = output[0]
     return a
 
-
-p_control = False
 MIN_SPEED = 0.1
 if __name__ == "__main__":
     from pyglet.window import key
@@ -711,7 +699,6 @@ if __name__ == "__main__":
         global genSize
         global show
         if k == key.ENTER:
-            done = True
             restart = True
         if k == key.LEFT:
             MutationChance -= 0.1
@@ -734,14 +721,7 @@ if __name__ == "__main__":
     env.viewer.window.on_key_release = key_release
     isopen = True
 
-    #keras trainer
-    #----
-    #copy from keras_trainer
-    #----
-    #deep6trained.npy top10 = [57, 58, 39, 4, 90, 79, 97, 89, 72, 80]
-
     old_networks = np.load('C:\\Users\\miikk\\OneDrive\\Desktop\\VSC\\AutonomousDrivingSimulator\\deep6trained.npy', allow_pickle=True)#[[4,74,15,17,73,64,68,55,25,65]]C:\\Users\\miikk\\Documents\\deep7ultratrained.npy
-    #hybrid = old_networks[0] #39 #79 steady
     genSize = 80
 
     networks = []
@@ -769,14 +749,9 @@ if __name__ == "__main__":
             yaw = env.car.yaw_velocity
             inputs = (speed, offset, body_angle, curve1, curve2, slip, yaw)
 
-            if p_control:
 
-                a = P_controller(inputs)
-            else:
-                output = current_network.forward_propagate(inputs)
-                #output = model(np.array([np.array(inputs)]), training=False)[0]
-                #output = hybrid.forward_propagate(inputs)
-                a = NN_controller(output)
+            output = current_network.forward_propagate(inputs)
+            a = NN_controller(output)
 
             s, r, done, info = env.step(a)
             total_reward += r
@@ -808,7 +783,6 @@ if __name__ == "__main__":
                     networks[i].mutate(MutationChance, MutationStrength)
                 rounds = 0
                 gen += 1
-
             if show:
                 isopen = env.render()
             steps += 1

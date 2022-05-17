@@ -13,8 +13,6 @@ Neural network class added (modified from: Jason Brownlee on November 7, 2016 in
 
 Center point offset and angle offset measures added
 
-P-control driving added
-
 Mutation to Neural Network added
 
 Curve steepness input added
