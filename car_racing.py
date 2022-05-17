@@ -27,7 +27,7 @@ WINDOW_H = 800
 SCALE = 6.0  # Track scale
 TRACK_RAD = 700 / SCALE  # Track is heavily morphed circle with this radius
 PLAYFIELD = 2000 / SCALE  # Game over boundary
-FPS = 25  # Frames per second
+FPS = 30  # Frames per second
 ZOOM = 1    #2.7  # Camera zoom
 ZOOM_FOLLOW = False  # Set to False for fixed view (don't use zoom)
 
@@ -497,7 +497,7 @@ class CarRacing(gym.Env, EzPickle):
         #middle line
         p2 = self.road[self.car.curren_tile].center_p
         p1 = self.road[self.car.curren_tile - 2].center_p
-        self.debug_line(p1, p2)
+        #self.debug_line(p1, p2)
         #curve forecast
         p3 = p2
         if (self.car.curren_tile + FUTURE_SIGHT) < len(self.road):
@@ -508,8 +508,8 @@ class CarRacing(gym.Env, EzPickle):
             p4 = self.road[-1].center_p
             p5 = p3
             p6 = p4
-        self.debug_line(p3, p4, color=(50, 50, 0))
-        self.debug_line(p5, p6, color=(0, 100, 50))
+        #self.debug_line(p3, p4, color=(50, 50, 0))
+        #self.debug_line(p5, p6, color=(0, 100, 50))
         self.debug_line(self.car.hull.position, p5, color=(50, 0, 100))
         arr = None
         win = self.viewer.window
@@ -622,7 +622,7 @@ def NN_controller(output):
     a[0] = output[0]
     return a
 
-MIN_SPEED = 0.05
+MIN_SPEED = 0.03
 if __name__ == "__main__":
     from pyglet.window import key
 
