@@ -15,7 +15,7 @@ import random
 import NN
 
 SIZE = 0.02
-ENGINE_POWER = 0.5*100000000*SIZE*SIZE/2
+ENGINE_POWER = 0.5*100000000*SIZE*SIZE/4
 WHEEL_MOMENT_OF_INERTIA = 4000*SIZE*SIZE/4
 FRICTION_LIMIT = 1000000*SIZE*SIZE # friction ~= mass ~= size^2 (calculated implicitly using density)
 WHEEL_R = 27
@@ -73,6 +73,7 @@ class Car:
         self.angle = 0
         self.curve1 = 0
         self.curve2 = 0
+        self.angle_offset = 0
         self.slip_rate = 0
         self.yaw_velocity = 0
         self.drifting = False
@@ -138,7 +139,7 @@ class Car:
 
         Args:
             b (0..1): Degree to which the brakes are applied. More than 0.9 blocks the wheels to zero rotation"""
-        for w in self.wheels[:4]: #brake only rear wheels
+        for w in self.wheels[:4]:
             w.brake = b
 
     def steer(self, s):

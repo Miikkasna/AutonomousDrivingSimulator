@@ -27,7 +27,7 @@ WINDOW_H = 800
 SCALE = 6.0  # Track scale
 TRACK_RAD = 700 / SCALE  # Track is heavily morphed circle with this radius
 PLAYFIELD = 2000 / SCALE  # Game over boundary
-FPS = 50  # Frames per second
+FPS = 25  # Frames per second
 ZOOM = 1    #2.7  # Camera zoom
 ZOOM_FOLLOW = False  # Set to False for fixed view (don't use zoom)
 
@@ -43,8 +43,8 @@ ROAD_COLOR = [0.4, 0.4, 0.4]
 FRICTION = 1.5#0.4
 MAX_ANGLE = 90.0
 MAX_SPEED = 50.0 #tested
-FUTURE_SIGHT = 12
-TIMEPENALTY = 0.45
+FUTURE_SIGHT = 10
+TIMEPENALTY = 0.1
 
 class FrictionDetector(contactListener):
     def __init__(self, env):
@@ -109,8 +109,6 @@ class CarRacing(gym.Env, EzPickle):
         gaussian = np.random.normal(FRICTION, 0.2, 1000)
         self.friction_values = gaussian[(gaussian > 0.1) & (gaussian < 1.0)]
         self.friction_change = random.randrange(5, 15)/10.0
-        #plt.hist(self.friction_values, 10)
-        #plt.show()
         self.fd_tile = fixtureDef(
             shape=polygonShape(vertices=[(0, 0), (1, 0), (1, -1), (0, -1)])
         )
@@ -240,8 +238,6 @@ class CarRacing(gym.Env, EzPickle):
             elif pass_through_start and i1 == -1:
                 i1 = i
                 break
-        #if self.verbose == 1:
-            #print("Track generation: %i..%i -> %i-tiles track" % (i1, i2, i2 - i1))
         assert i1 != -1
         assert i2 != -1
 
@@ -359,7 +355,7 @@ class CarRacing(gym.Env, EzPickle):
                 action[2] = 0
             self.car.steer(-action[0])
             self.car.gas(action[1])
-            self.car.brake(action[2])
+            self.car.brake(0)
         self.car.step(1.0 / FPS)
         self.world.Step(1.0 / FPS, 6 * 30, 2 * 30)
         self.t += 1.0 / FPS
@@ -384,6 +380,7 @@ class CarRacing(gym.Env, EzPickle):
                 step_reward = -100
             if abs(self.car.offset) > 1:
                 self.reward -= 1
+                done = True
             if abs(self.car.angle) == 1:
                 self.reward -= 1
             if speed < MIN_SPEED:
@@ -418,6 +415,7 @@ class CarRacing(gym.Env, EzPickle):
             p6 = p4
         self.car.curve1 = self.calcAngle(p1, p2, p3, p4)/MAX_ANGLE
         self.car.curve2 = self.calcAngle(p1, p2, p5, p6)/MAX_ANGLE
+        self.car.angle_offset = self.calcAngle(p3, p4, self.car.hull.position, p5)/MAX_ANGLE
         self.car.slip_rate = self.calcSlipRate()
         self.car.yaw_velocity = self.car.hull.angularVelocity/400.0 #tested
         self.car.speed = np.linalg.norm(self.car.hull.linearVelocity)/MAX_SPEED
@@ -440,7 +438,7 @@ class CarRacing(gym.Env, EzPickle):
         side /= -abs(side)
         offset = np.linalg.norm(np.cross(p2-p1, p1-p3))/np.linalg.norm(p2-p1)*side
         return offset
-        #return ()/(TRACK_WIDTH)
+
     def calcAngle(self, p1, p2, p3, p4):
         v1 = -np.array(p1) + np.array(p2)
         v2 = -np.array(p3) + np.array(p4)
@@ -512,6 +510,7 @@ class CarRacing(gym.Env, EzPickle):
             p6 = p4
         self.debug_line(p3, p4, color=(50, 50, 0))
         self.debug_line(p5, p6, color=(0, 100, 50))
+        self.debug_line(self.car.hull.position, p5, color=(50, 0, 100))
         arr = None
         win = self.viewer.window
         win.switch_to()
@@ -598,7 +597,6 @@ class CarRacing(gym.Env, EzPickle):
                         0,
                     ]
                 )
-
         for poly, color in self.road_poly:
             colors.extend([color[0], color[1], color[2], 1] * len(poly))
             for p in poly:
@@ -611,66 +609,6 @@ class CarRacing(gym.Env, EzPickle):
         vl.delete()
 
     def render_indicators(self, W, H):
-        s = W / 40.0
-        h = H / 40.0
-        colors = [0, 0, 0, 1] * 4
-        polygons = [W, 0, 0, W, 5 * h, 0, 0, 5 * h, 0, 0, 0, 0]
-
-        def vertical_ind(place, val, color):
-            colors.extend([color[0], color[1], color[2], 1] * 4)
-            polygons.extend(
-                [
-                    place * s,
-                    h + h * val,
-                    0,
-                    (place + 1) * s,
-                    h + h * val,
-                    0,
-                    (place + 1) * s,
-                    h,
-                    0,
-                    (place + 0) * s,
-                    h,
-                    0,
-                ]
-            )
-
-        def horiz_ind(place, val, color):
-            colors.extend([color[0], color[1], color[2], 1] * 4)
-            polygons.extend(
-                [
-                    (place + 0) * s,
-                    4 * h,
-                    0,
-                    (place + val) * s,
-                    4 * h,
-                    0,
-                    (place + val) * s,
-                    2 * h,
-                    0,
-                    (place + 0) * s,
-                    2 * h,
-                    0,
-                ]
-            )
-
-        true_speed = np.sqrt(
-            np.square(self.car.hull.linearVelocity[0])
-            + np.square(self.car.hull.linearVelocity[1])
-        )
-
-        vertical_ind(5, 0.02 * true_speed, (1, 1, 1))
-        vertical_ind(7, 0.01 * self.car.wheels[0].omega, (0.0, 0, 1))  # ABS sensors
-        vertical_ind(8, 0.01 * self.car.wheels[1].omega, (0.0, 0, 1))
-        vertical_ind(9, 0.01 * self.car.wheels[2].omega, (0.2, 0, 1))
-        vertical_ind(10, 0.01 * self.car.wheels[3].omega, (0.2, 0, 1))
-        horiz_ind(20, -10.0 * self.car.wheels[0].joint.angle, (0, 1, 0))
-        horiz_ind(30, -0.8 * self.car.hull.angularVelocity, (1, 0, 0))
-        vl = pyglet.graphics.vertex_list(
-            len(polygons) // 3, ("v3f", polygons), ("c4f", colors)  # gl.GL_QUADS,
-        )
-        vl.draw(gl.GL_QUADS)
-        vl.delete()
         self.score_label.text = "%04i" % self.reward
         self.score_label.draw()
         
@@ -684,7 +622,7 @@ def NN_controller(output):
     a[0] = output[0]
     return a
 
-MIN_SPEED = 0.1
+MIN_SPEED = 0.05
 if __name__ == "__main__":
     from pyglet.window import key
 
@@ -715,20 +653,26 @@ if __name__ == "__main__":
     def key_release(k, mod):
         if k == key.LEFT and a[0] == -1.0:
             a[0] = 0
+
+
     env = CarRacing()
     env.render()
     env.viewer.window.on_key_press = key_press
     env.viewer.window.on_key_release = key_release
     isopen = True
-
-    old_networks = np.load('C:\\Users\\miikk\\OneDrive\\Desktop\\VSC\\AutonomousDrivingSimulator\\deep6trained.npy', allow_pickle=True)#[[4,74,15,17,73,64,68,55,25,65]]C:\\Users\\miikk\\Documents\\deep7ultratrained.npy
     genSize = 80
-
     networks = []
-    for i in range(genSize):
-        current_network = np.random.choice(old_networks)
-        current_network.mutate(MutationChance, MutationStrength)
-        networks.append(current_network)
+    if False: # use old networks
+        old_networks = np.load('C:\\Users\\miikk\\OneDrive\\Desktop\\VSC\\AutonomousDrivingSimulator\\deep6trained.npy', allow_pickle=True)#[[4,74,15,17,73,64,68,55,25,65]]C:\\Users\\miikk\\Documents\\deep7ultratrained.npy
+        for i in range(genSize):
+            current_network = np.random.choice(old_networks)
+            current_network.mutate(MutationChance, MutationStrength)
+            networks.append(current_network)
+    else:
+        for i in range(genSize):
+            current_network = NN.NeuralNetwork(2, [4], 2)
+            current_network.mutate(MutationChance, MutationStrength)
+            networks.append(current_network)
     current_network = networks[0]
     rounds = 0
     gen = 1
@@ -747,13 +691,14 @@ if __name__ == "__main__":
             curve2 = env.car.curve2
             slip = env.car.slip_rate
             yaw = env.car.yaw_velocity
-            inputs = (speed, offset, body_angle, curve1, curve2, slip, yaw)
+            angle_offset = env.car.angle_offset
+            inputs = (speed, angle_offset)
 
 
             output = current_network.forward_propagate(inputs)
-            a = NN_controller(output)
+            actions = NN_controller(output)
 
-            s, r, done, info = env.step(a)
+            s, r, done, info = env.step(actions)
             total_reward += r
             if done:
                 current_network.fitness = total_reward
