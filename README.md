@@ -26,7 +26,7 @@ Track saving added
 
 Possibility to add the number of network inputs, create training data for cloning networks, train with TensorFlow and swap trained weights to Car NN class added
 
-Curve steepness devided to two inputs
+Curve steepness divided into two inputs
 
 Tyre slipping input added
 
