@@ -4,6 +4,7 @@ original gym repository https://github.com/openai/gym.git
 
 Note: car_racing uses rendering.py in box2d classic_controls, which is missing from new version of the library.
 
+![Alt Text](acar.png)
 
 Current status:
 
@@ -28,3 +29,5 @@ Possibility to add the number of network inputs, create training data for clonin
 Curve steepness devided to two inputs
 
 Tyre slipping input added
+
+Currently using one direction input
