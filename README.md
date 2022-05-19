@@ -2,7 +2,7 @@ This repository is modified from original open AI gym repository and it is focus
 Car_racing is modified for low friction autonomous driving with evolution strategy training.
 original gym repository https://github.com/openai/gym.git
 
-Note: car_racing uses rendering.py in box2d classic_controls, which is missing from new version of the library.
+Note: car_racing uses rendering.py in box2d classic_controls, which is missing from new version of the library. You can find it from box2d git history, or modify the code to work with the new version.
 
 ![Alt Text](acar.png)
 
