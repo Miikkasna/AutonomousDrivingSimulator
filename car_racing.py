@@ -355,7 +355,7 @@ class CarRacing(gym.Env, EzPickle):
                 action[2] = 0
             self.car.steer(-action[0])
             self.car.gas(action[1])
-            self.car.brake(0)
+            self.car.brake(action[2])
         self.car.step(1.0 / FPS)
         self.world.Step(1.0 / FPS, 6 * 30, 2 * 30)
         self.t += 1.0 / FPS
@@ -627,8 +627,8 @@ if __name__ == "__main__":
     from pyglet.window import key
 
     a = np.array([0.0, 0.0, 0.0])
-    MutationChance = 0.5
-    MutationStrength = 0.4
+    MutationChance = 0.4
+    MutationStrength = 0.0
     show = True
     def key_press(k, mod):
         global restart
@@ -660,12 +660,12 @@ if __name__ == "__main__":
     env.viewer.window.on_key_press = key_press
     env.viewer.window.on_key_release = key_release
     isopen = True
-    genSize = 80
+    genSize = 100
     networks = []
-    if False: # use old networks
-        old_networks = np.load('C:\\Users\\miikk\\OneDrive\\Desktop\\VSC\\AutonomousDrivingSimulator\\deep6trained.npy', allow_pickle=True)#[[4,74,15,17,73,64,68,55,25,65]]C:\\Users\\miikk\\Documents\\deep7ultratrained.npy
+    if True: # use old networks
+        old_networks = np.load('19.5.networks.npy', allow_pickle=True)[[22, 20, 33, 19, 16, 48, 66, 67,  8,  6]][[7]]
         for i in range(genSize):
-            current_network = np.random.choice(old_networks)
+            current_network = deepcopy(np.random.choice(old_networks))
             current_network.mutate(MutationChance, MutationStrength)
             networks.append(current_network)
     else:
@@ -699,6 +699,7 @@ if __name__ == "__main__":
             actions = NN_controller(output)
 
             s, r, done, info = env.step(actions)
+            #print(actions)
             total_reward += r
             if done:
                 current_network.fitness = total_reward
