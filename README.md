@@ -3,8 +3,11 @@ Car_racing is modified for low friction autonomous driving with evolution strate
 original gym repository https://github.com/openai/gym.git
 
 Pic1. One direction input
+
 ![Alt Text](acar.png)
+
 Pic2. Three direction inputs
+
 ![Alt Text](acar.png)
 
 
