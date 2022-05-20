@@ -8,7 +8,7 @@ Pic1. One direction input
 
 Pic2. Three direction inputs
 
-![Alt Text](acar.png)
+![Alt Text](acar2.png)
 
 
 Current status:
