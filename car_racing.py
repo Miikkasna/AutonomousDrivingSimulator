@@ -395,28 +395,29 @@ class CarRacing(gym.Env, EzPickle):
 
     def calcInputs(self):
         #calculate stuff
-        p2 = self.road[self.car.curren_tile].center_p
-        p1 = self.road[self.car.curren_tile - 2].center_p
-        self.car.offset = self.calcOffset(p1, p2, self.car.hull.position)/TRACK_WIDTH
-        p3 = self.car.wheels[2].position
-        p4 = self.car.wheels[0].position
-        self.car.angle = self.calcAngle(p1, p2, p3, p4)/MAX_ANGLE
+        current_tile_center = self.road[self.car.curren_tile].center_p
+        previous_tile_center = self.road[self.car.curren_tile - 2].center_p
+        self.car.offset = self.calcOffset(previous_tile_center, current_tile_center, self.car.hull.position)/TRACK_WIDTH
+        rear_tire = self.car.wheels[2].position
+        front_tire = self.car.wheels[0].position
         if self.car.angle > 1:
             self.car.angle = 1
         elif self.car.angle < -1:
             self.car.angle = -1
-        p3 = p2
         if (self.car.curren_tile + FUTURE_SIGHT) < len(self.road):
-            p4 = self.road[self.car.curren_tile + int(FUTURE_SIGHT/2)].center_p
-            p5 = self.road[self.car.curren_tile + int(FUTURE_SIGHT/2)].center_p
-            p6 = self.road[self.car.curren_tile + FUTURE_SIGHT].center_p
+            front_tire = self.road[self.car.curren_tile + int(FUTURE_SIGHT/2)].center_p
+            future_tile1_center = self.road[self.car.curren_tile + int(FUTURE_SIGHT/2)].center_p
+            future_tile2_center = self.road[self.car.curren_tile + FUTURE_SIGHT].center_p
         else:
-            p4 = self.road[-1].center_p
-            p5 = p3
-            p6 = p4
-        self.car.curve1 = self.calcAngle(p1, p2, p3, p4)/MAX_ANGLE
-        self.car.curve2 = self.calcAngle(p1, p2, p5, p6)/MAX_ANGLE
-        self.car.angle_offset = self.calcAngle(self.car.wheels[2].position, self.car.wheels[0].position, self.car.hull.position, p5)/MAX_ANGLE
+            front_tire = self.road[-1].center_p
+            future_tile1_center = current_tile_center
+            future_tile2_center = front_tire
+
+        # set input variables
+        self.car.angle = self.calcAngle(previous_tile_center, current_tile_center, rear_tire, front_tire)/MAX_ANGLE
+        self.car.curve1 = self.calcAngle(previous_tile_center, current_tile_center, current_tile_center, front_tire)/MAX_ANGLE
+        self.car.curve2 = self.calcAngle(previous_tile_center, current_tile_center, future_tile1_center, future_tile2_center)/MAX_ANGLE
+        self.car.angle_offset = self.calcAngle(self.car.wheels[2].position, self.car.wheels[0].position, self.car.hull.position, future_tile1_center)/MAX_ANGLE
         self.car.slip_rate = self.calcSlipRate()
         self.car.yaw_velocity = self.car.hull.angularVelocity/400.0 #tested
         self.car.speed = np.linalg.norm(self.car.hull.linearVelocity)/MAX_SPEED
@@ -489,11 +490,10 @@ class CarRacing(gym.Env, EzPickle):
         )
         self.transform.set_rotation(angle)
         self.car.draw(self.viewer, mode != "state_pixels")
-        #middle line
+        # draw input lines
         p2 = self.road[self.car.curren_tile].center_p
         p1 = self.road[self.car.curren_tile - 2].center_p
-        #self.debug_line(p1, p2)
-        #curve forecast
+        self.debug_line(p1, p2)
         p3 = p2
         if (self.car.curren_tile + FUTURE_SIGHT) < len(self.road):
             p4 = self.road[self.car.curren_tile + int(FUTURE_SIGHT/2)].center_p
@@ -503,9 +503,10 @@ class CarRacing(gym.Env, EzPickle):
             p4 = self.road[-1].center_p
             p5 = p3
             p6 = p4
-        #self.debug_line(p3, p4, color=(50, 50, 0))
-        #self.debug_line(p5, p6, color=(0, 100, 50))
+        self.debug_line(p3, p4, color=(50, 50, 0))
+        self.debug_line(p5, p6, color=(0, 100, 50))
         self.debug_line(self.car.hull.position, p5, color=(50, 0, 100))
+
         arr = None
         win = self.viewer.window
         win.switch_to()
@@ -658,8 +659,8 @@ if __name__ == "__main__":
     isopen = True
     genSize = 100
     networks = []
-    if False: # use old networks
-        old_networks = np.load('19.5.networks.npy', allow_pickle=True)#[[22, 20, 33, 19, 16, 48, 66, 67,  8,  6]][[7]]
+    if True: # use old networks
+        old_networks = np.load('20.5.networks.npy', allow_pickle=True)#[[22, 20, 33, 19, 16, 48, 66, 67,  8,  6]][[7]]
         for i in range(genSize):
             current_network = deepcopy(np.random.choice(old_networks))
             current_network.mutate(MutationChance, MutationStrength)
