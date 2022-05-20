@@ -41,11 +41,11 @@ BORDER_MIN_COUNT = 4
 
 ROAD_COLOR = [0.4, 0.4, 0.4]
 
-FRICTION = 1.5#0.4
+FRICTION = 1.0#0.4
 MAX_ANGLE = 90.0
 MAX_SPEED = 50.0 #tested
 FUTURE_SIGHT = 10
-TIMEPENALTY = 0.1
+TIMEPENALTY = 0.4
 
 class FrictionDetector(contactListener):
     def __init__(self, env):
@@ -416,7 +416,7 @@ class CarRacing(gym.Env, EzPickle):
             p6 = p4
         self.car.curve1 = self.calcAngle(p1, p2, p3, p4)/MAX_ANGLE
         self.car.curve2 = self.calcAngle(p1, p2, p5, p6)/MAX_ANGLE
-        self.car.angle_offset = self.calcAngle(p3, p4, self.car.hull.position, p5)/MAX_ANGLE
+        self.car.angle_offset = self.calcAngle(self.car.wheels[2].position, self.car.wheels[0].position, self.car.hull.position, p5)/MAX_ANGLE
         self.car.slip_rate = self.calcSlipRate()
         self.car.yaw_velocity = self.car.hull.angularVelocity/400.0 #tested
         self.car.speed = np.linalg.norm(self.car.hull.linearVelocity)/MAX_SPEED
@@ -607,7 +607,7 @@ class CarRacing(gym.Env, EzPickle):
         self.score_label.text = "%04i" % self.reward
         self.score_label.draw()
         
-def NN_controller(output):
+def controller(output):
     a = np.array([0.0, 0.0, 0.0])
     throttle = output[1]
     if throttle > 0:
@@ -617,13 +617,14 @@ def NN_controller(output):
     a[0] = output[0]
     return a
 
+
 MIN_SPEED = 0.03
 if __name__ == "__main__":
     from pyglet.window import key
 
     a = np.array([0.0, 0.0, 0.0])
     MutationChance = 0.4
-    MutationStrength = 0.0
+    MutationStrength = 0.5
     show = True
     def key_press(k, mod):
         global restart
@@ -657,8 +658,8 @@ if __name__ == "__main__":
     isopen = True
     genSize = 100
     networks = []
-    if True: # use old networks
-        old_networks = np.load('19.5.networks.npy', allow_pickle=True)[[22, 20, 33, 19, 16, 48, 66, 67,  8,  6]][[7]]
+    if False: # use old networks
+        old_networks = np.load('19.5.networks.npy', allow_pickle=True)#[[22, 20, 33, 19, 16, 48, 66, 67,  8,  6]][[7]]
         for i in range(genSize):
             current_network = deepcopy(np.random.choice(old_networks))
             current_network.mutate(MutationChance, MutationStrength)
@@ -689,9 +690,9 @@ if __name__ == "__main__":
             angle_offset = env.car.angle_offset
             inputs = (speed, angle_offset)
 
-
             output = current_network.forward_propagate(inputs)
-            actions = NN_controller(output)
+            actions = controller(output)
+
 
             s, r, done, info = env.step(actions)
             #print(actions)
