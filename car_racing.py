@@ -6,6 +6,7 @@ import Box2D
 from Box2D.b2 import fixtureDef
 from Box2D.b2 import polygonShape
 from Box2D.b2 import contactListener
+import rendering
 
 import gym
 from gym import spaces
@@ -458,8 +459,6 @@ class CarRacing(gym.Env, EzPickle):
     def render(self, mode="human"):
         assert mode in ["human", "state_pixels", "rgb_array"]
         if self.viewer is None:
-            from gym.envs.classic_control import rendering
-
             self.viewer = rendering.Viewer(WINDOW_W, WINDOW_H)
             self.score_label = pyglet.text.Label(
                 "0000",
@@ -471,10 +470,8 @@ class CarRacing(gym.Env, EzPickle):
                 color=(255, 255, 255, 255),
             )
             self.transform = rendering.Transform()
-
         if "t" not in self.__dict__:
             return  # reset() not called yet
-
         # Animate zoom first second:
         zoom = 0.1 * SCALE * max(1 - self.t, 0) + ZOOM * SCALE * min(self.t, 1)
         scroll_x = self.car.hull.position[0]
@@ -491,9 +488,7 @@ class CarRacing(gym.Env, EzPickle):
             - (scroll_x * zoom * math.sin(angle) + scroll_y * zoom * math.cos(angle)),
         )
         self.transform.set_rotation(angle)
-        
         self.car.draw(self.viewer, mode != "state_pixels")
-
         #middle line
         p2 = self.road[self.car.curren_tile].center_p
         p1 = self.road[self.car.curren_tile - 2].center_p
