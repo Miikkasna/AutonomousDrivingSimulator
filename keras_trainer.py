@@ -1,5 +1,6 @@
 
 import NN
+import numpy as np
 from tensorflow.keras import Sequential, layers, losses
 
 # load network to be cloned
