@@ -43,7 +43,8 @@ ROAD_COLOR = [0.4, 0.4, 0.4]
 
 FRICTION = 1.0#0.4
 MAX_ANGLE = 90.0
-MAX_SPEED = 50.0 #tested
+MIN_SPEED = 0.03
+MAX_SPEED = 50.0
 FUTURE_SIGHT = 10
 TIMEPENALTY = 0.4
 
@@ -618,15 +619,15 @@ def controller(output):
     a[0] = output[0]
     return a
 
+# ----------------------MAIN----------------------
 
-MIN_SPEED = 0.03
 if __name__ == "__main__":
     from pyglet.window import key
-
-    a = np.array([0.0, 0.0, 0.0])
+    # training parameters
     MutationChance = 0.4
     MutationStrength = 0.5
-    show = True
+    genSize = 100
+    show = True # speed up the simulation by disabling rendering
     def key_press(k, mod):
         global restart
         global MutationChance
@@ -645,19 +646,14 @@ if __name__ == "__main__":
             genSize += 5
         if k == key.DOWN:
             genSize -= 5
-        if k == key.S:
+        if k == key.S: 
             show = not show
-    def key_release(k, mod):
-        if k == key.LEFT and a[0] == -1.0:
-            a[0] = 0
-
-
+    # initialize environment
     env = CarRacing()
     env.render()
     env.viewer.window.on_key_press = key_press
-    env.viewer.window.on_key_release = key_release
     isopen = True
-    genSize = 100
+    # initialize neural networks
     networks = []
     if True: # use old networks
         old_networks = np.load('20.5.networks.npy', allow_pickle=True)#[[22, 20, 33, 19, 16, 48, 66, 67,  8,  6]][[7]]
@@ -670,6 +666,7 @@ if __name__ == "__main__":
             current_network = NN.NeuralNetwork(2, [4], 2)
             current_network.mutate(MutationChance, MutationStrength)
             networks.append(current_network)
+    # start driving simulation and training
     current_network = networks[0]
     rounds = 0
     gen = 1
@@ -680,7 +677,7 @@ if __name__ == "__main__":
         steps = 0
         restart = False
         while True:
-            #input("step") #frame by frame debug
+            #input("step") # frame by frame debug
             speed = env.car.speed
             offset = env.car.offset
             body_angle = env.car.angle
@@ -689,14 +686,13 @@ if __name__ == "__main__":
             slip = env.car.slip_rate
             yaw = env.car.yaw_velocity
             angle_offset = env.car.angle_offset
-            inputs = (speed, angle_offset)
+            inputs = (speed, angle_offset) # choose inputs for neural network. Match the input nodes in the neural network.
 
             output = current_network.forward_propagate(inputs)
             actions = controller(output)
 
-
             s, r, done, info = env.step(actions)
-            #print(actions)
+
             total_reward += r
             if done:
                 current_network.fitness = total_reward
@@ -709,8 +705,8 @@ if __name__ == "__main__":
                     print("avg reward {:+0.2f}, mutation: ({:0.1f}, {:0.1f}), genSize: {}, generation: {}, round: {}".format(
                         avgfit, MutationChance, MutationStrength, genSize, gen, rounds)
                         )
-                
-            if rounds >= genSize:
+            
+            if rounds >= genSize: # create a pool of neural networks and generate a new generation
                 pool = []
                 for i in range(len(networks)):
                     pool_size = int(networks[i].fitness)
