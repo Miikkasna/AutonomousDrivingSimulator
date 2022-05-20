@@ -10,6 +10,9 @@ Pic2. Three direction inputs
 
 ![Alt Text](acar2.png)
 
+Gif1. Trained with purple line and speed as input
+
+![Alt Text](acar-gif.gif)
 
 Current status:
 
