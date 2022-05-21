@@ -17,7 +17,7 @@ import pyglet, random
 import matplotlib.pyplot as plt
 pyglet.options["debug_gl"] = False
 from pyglet import gl
-import NN
+import neural_netwok
 STATE_W = 96  # less than Atari 160x192
 STATE_H = 96
 VIDEO_W = 600
@@ -663,7 +663,7 @@ if __name__ == "__main__":
             networks.append(current_network)
     else:
         for i in range(genSize):
-            current_network = NN.NeuralNetwork(2, [4], 2)
+            current_network = neural_netwok.NeuralNetwork(2, [4], 2)
             current_network.mutate(MutationChance, MutationStrength)
             networks.append(current_network)
     # start driving simulation and training

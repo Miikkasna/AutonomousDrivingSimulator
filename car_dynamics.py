@@ -12,7 +12,7 @@ import math
 import Box2D
 from Box2D.b2 import (edgeShape, circleShape, fixtureDef, polygonShape, revoluteJointDef, contactListener, shape)
 import random
-import NN
+import neural_netwok
 
 SIZE = 0.02
 ENGINE_POWER = 0.5*100000000*SIZE*SIZE/4
