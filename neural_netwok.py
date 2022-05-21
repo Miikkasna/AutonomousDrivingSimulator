@@ -43,7 +43,6 @@ class NeuralNetwork():
             inputs = 2*np.array(new_inputs) - 1 #map to -1 to 1
         return inputs
 
-
     def mutate(self, MutationChance=0.5, MutationStrength=0.5):
         for layer in self.network:
             for neuron in layer:
@@ -60,6 +59,7 @@ class NeuralNetwork():
                     self.network[layer][node]['weights'][w] = weights[2*layer][:, node][w]
                 self.network[layer][node]['weights'][-1] = weights[2*layer + 1][node] #bias
             prev_nodes = nodes
+
 def create_training_set(setSize, trainer, target_inputs):
     train_x = []
     train_y = []

@@ -17,7 +17,8 @@ import pyglet, random
 import matplotlib.pyplot as plt
 pyglet.options["debug_gl"] = False
 from pyglet import gl
-import neural_netwok
+from neural_netwok import NeuralNetwork
+
 STATE_W = 96  # less than Atari 160x192
 STATE_H = 96
 VIDEO_W = 600
@@ -625,7 +626,7 @@ if __name__ == "__main__":
     from pyglet.window import key
     # training parameters
     MutationChance = 0.4
-    MutationStrength = 0.5
+    MutationStrength = 0.0
     genSize = 100
     show = True # speed up the simulation by disabling rendering
     def key_press(k, mod):
@@ -655,15 +656,17 @@ if __name__ == "__main__":
     isopen = True
     # initialize neural networks
     networks = []
-    if True: # use old networks
+    if False: # use old networks
         old_networks = np.load('20.5.networks.npy', allow_pickle=True)#[[22, 20, 33, 19, 16, 48, 66, 67,  8,  6]][[7]]
         for i in range(genSize):
             current_network = deepcopy(np.random.choice(old_networks))
             current_network.mutate(MutationChance, MutationStrength)
             networks.append(current_network)
     else:
+        ok = np.load('ok_agent.npy', allow_pickle=True)
         for i in range(genSize):
-            current_network = neural_netwok.NeuralNetwork(2, [4], 2)
+            current_network = NeuralNetwork(2, [4], 2)
+            current_network.network = ok
             current_network.mutate(MutationChance, MutationStrength)
             networks.append(current_network)
     # start driving simulation and training
