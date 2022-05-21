@@ -673,7 +673,7 @@ if __name__ == "__main__":
     else:
         for i in range(genSize):
             current_network = NeuralNetwork(2, [4], 2)
-            current_network.network = np.load('ok_agent.npy', allow_pickle=True)
+            # current_network.network = np.load('ok_agent_low_fric.npy', allow_pickle=True)
             current_network.mutate(MutationChance, MutationStrength)
             networks.append(current_network)
     # start driving simulation and training
