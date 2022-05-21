@@ -42,7 +42,7 @@ BORDER_MIN_COUNT = 4
 
 ROAD_COLOR = [0.4, 0.4, 0.4]
 
-FRICTION = 1.0#0.4
+FRICTION = 0.5
 MAX_ANGLE = 90.0
 MIN_SPEED = 0.03
 MAX_SPEED = 50.0
@@ -353,6 +353,7 @@ class CarRacing(gym.Env, EzPickle):
 
     def step(self, action):
         if action is not None:
+            self.car.last_action = action
             if self.tile_visited_count <= 4 and action[1] < 0.1:
                 action[1] = 0.1
                 action[2] = 0
@@ -449,7 +450,7 @@ class CarRacing(gym.Env, EzPickle):
         signed_angle = math.atan2( v1[0]*v2[1]- v1[1]*v2[0], v1[0]*v2[0] + v1[1]*v2[1] )
         return np.rad2deg(signed_angle)
 
-    def debug_line(self, p1, p2, color=(0.0,  255, 0.0)):
+    def debug_line(self, p1, p2, color=(0.0,  255, 0.0), linewidth=2):
         #debug line
         class Particle:
             pass
@@ -457,21 +458,18 @@ class CarRacing(gym.Env, EzPickle):
 
         p.poly = [(p1[0], p1[1]), (p2[0], p2[1]) ]
         p.color = color
-        self.viewer.draw_polyline(p.poly, color=p.color, linewidth=2)
+        self.viewer.draw_polyline(p.poly, color=p.color, linewidth=linewidth)
+
 
     def render(self, mode="human"):
         assert mode in ["human", "state_pixels", "rgb_array"]
         if self.viewer is None:
             self.viewer = rendering.Viewer(WINDOW_W, WINDOW_H)
-            self.score_label = pyglet.text.Label(
-                "0000",
-                font_size=36,
-                x=20,
-                y=WINDOW_H * 2.5 / 40.00,
-                anchor_x="left",
-                anchor_y="center",
-                color=(255, 255, 255, 255),
-            )
+            self.score_label = pyglet.text.Label("0000",font_size=36,x=20,y=WINDOW_H * 2.5 / 40.00,anchor_x="left",anchor_y="center",color=(255, 255, 255, 255),)
+            self.throttle_label = pyglet.text.Label("0000",font_size=36,x=150,y=WINDOW_H * 2.5 / 40.00,anchor_x="left",anchor_y="center",color=(0, 255, 0, 255),)
+            self.brake_label = pyglet.text.Label("0000",font_size=36,x=300,y=WINDOW_H * 2.5 / 40.00,anchor_x="left",anchor_y="center",color=(255, 0, 0, 255),)
+            self.steer_label = pyglet.text.Label("0000",font_size=36,x=450,y=WINDOW_H * 2.5 / 40.00,anchor_x="left",anchor_y="center",color=(0, 0, 255, 255),)
+            self.speed_label = pyglet.text.Label("0000",font_size=36,x=580,y=WINDOW_H * 2.5 / 40.00,anchor_x="left",anchor_y="center",color=(0, 0, 0, 255),)
             self.transform = rendering.Transform()
         if "t" not in self.__dict__:
             return  # reset() not called yet
@@ -508,6 +506,8 @@ class CarRacing(gym.Env, EzPickle):
         self.debug_line(p3, p4, color=(50, 50, 0))
         self.debug_line(p5, p6, color=(0, 100, 50))
         self.debug_line(self.car.hull.position, p5, color=(50, 0, 100))
+        # draw output indicators
+        self.debug_line((300, 300), (350, 350), color=(50, 50, 0))
 
         arr = None
         win = self.viewer.window
@@ -608,7 +608,15 @@ class CarRacing(gym.Env, EzPickle):
 
     def render_indicators(self, W, H):
         self.score_label.text = "%04i" % self.reward
+        self.throttle_label.text = str(round(self.car.last_action[1], 1))
+        self.brake_label.text = str(round(self.car.last_action[2], 1))
+        self.steer_label.text = str(round(self.car.last_action[0], 1))
+        self.speed_label.text = str(round(self.car.speed, 1))
         self.score_label.draw()
+        self.throttle_label.draw()
+        self.brake_label.draw()
+        self.steer_label.draw()
+        self.speed_label.draw()
         
 def controller(output):
     a = np.array([0.0, 0.0, 0.0])
@@ -625,8 +633,8 @@ def controller(output):
 if __name__ == "__main__":
     from pyglet.window import key
     # training parameters
-    MutationChance = 0.4
-    MutationStrength = 0.0
+    MutationChance = 0.6
+    MutationStrength = 0.7
     genSize = 100
     show = True # speed up the simulation by disabling rendering
     def key_press(k, mod):
@@ -665,6 +673,7 @@ if __name__ == "__main__":
     else:
         for i in range(genSize):
             current_network = NeuralNetwork(2, [4], 2)
+            current_network.network = np.load('ok_agent.npy', allow_pickle=True)
             current_network.mutate(MutationChance, MutationStrength)
             networks.append(current_network)
     # start driving simulation and training

@@ -78,6 +78,7 @@ class Car:
         self.yaw_velocity = 0
         self.drifting = False
         self.current_network = None
+        self.last_action = [0, 0, 0]
         WHEEL_POLY = [
             (-WHEEL_W, +WHEEL_R), (+WHEEL_W, +WHEEL_R),
             (+WHEEL_W, -WHEEL_R), (-WHEEL_W, -WHEEL_R)
